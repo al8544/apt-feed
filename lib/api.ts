@@ -1,6 +1,7 @@
 // lib/api.ts — every screen gets its data from here.
 // UI code should import from this file only, never call supabase directly.
 import { supabase } from './supabase';
+import { voteState } from './compare';
 
 // No real login yet: the "current user" is whichever crew member was picked in the
 // user switcher (saved in this browser), defaulting to Vinnie. Ids come from seed.sql.
@@ -46,8 +47,11 @@ export type Profile = {
 export type Match = { met: number; total: number; pct: number };
 
 export type GroupListing = Listing & {
-  likes: number;          // how many group members swiped right
+  likes: number;          // thumbs-up from active flock members
   likedBy: Profile[];     // who they are
+  down: number;           // thumbs-down from active flock members
+  contested: boolean;     // at least one thumbs-down, but fewer than half the flock
+  removed: boolean;       // thumbs-down reached half the flock, rounded up: off the active list, not suggested again
   match: Match;           // "Matches 3 of 4 group prefs" / "92% group match"
 };
 
@@ -98,8 +102,8 @@ async function decorate(listings: Listing[], members?: Profile[]): Promise<Group
   const people = members ?? (await getMemberProfiles());
   const byId = new Map(people.map((p) => [p.id, p]));
   const likeRows = check(
-    await supabase.from('flock_votes').select('listing_id, likes, liked_by').eq('flock_id', GROUP_ID)
-  ) as { listing_id: string; likes: number; liked_by: string[] }[];
+    await supabase.from('flock_votes').select('listing_id, likes, down, liked_by').eq('flock_id', GROUP_ID)
+  ) as { listing_id: string; likes: number; down: number; liked_by: string[] }[];
   const likes = new Map(likeRows.map((r) => [r.listing_id, r]));
 
   return listings.map((l) => {
@@ -107,6 +111,8 @@ async function decorate(listings: Listing[], members?: Profile[]): Promise<Group
     return {
       ...l,
       likes: row?.likes ?? 0,
+      down: row?.down ?? 0,
+      ...voteState(row?.down ?? 0, people.length),
       likedBy: (row?.liked_by ?? []).map((id) => byId.get(id)).filter((p): p is Profile => !!p),
       match: groupMatch(l, people),
     };
@@ -155,7 +161,8 @@ export async function getSwipeDeck(limit = 20, review?: 'right' | 'left'): Promi
   const listings = (check(await supabase.from('listing_cards').select(CARD_COLS)) as Listing[]).filter((l) =>
     review ? dirs.get(l.id) === review : !dirs.has(l.id)
   );
-  const decorated = await decorate(listings);
+  // A place the flock removed is not suggested again (it still shows up when you review your own piles).
+  const decorated = (await decorate(listings)).filter((l) => review || !l.removed);
   return decorated.sort((a, b) => b.match.pct - a.match.pct || b.likes - a.likes).slice(0, limit);
 }
 

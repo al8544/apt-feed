@@ -7,6 +7,7 @@ import {
   getGroupMembers,
   getMapListings,
   getProfile,
+  subscribeToGroupSwipes,
   type GroupListing,
   type Member,
   type Profile,
@@ -36,6 +37,20 @@ export default function GroupPage() {
     getGroupMembers().then(setMembers).catch((e) => (fail(e), setMembers([])));
     getMapListings().then(setListings).catch((e) => (fail(e), setListings([])));
     getProfile().then(setMe).catch(fail);
+
+    // Live: when anyone in the flock votes, refresh the rankings and the member counts without a reload.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = subscribeToGroupSwipes(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        getMapListings().then(setListings).catch(() => {});
+        getGroupMembers().then(setMembers).catch(() => {});
+      }, 300);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -49,7 +64,7 @@ export default function GroupPage() {
   const size = members?.length ?? 0;
   const prefs = members ? groupPrefs(members) : null;
   const ranked = (listings ?? [])
-    .filter((l) => l.likes > 0)
+    .filter((l) => l.likes > 0 && !l.removed) // thumbs-down from half the flock takes a place off the list
     .map((l) => ({ l, score: score(l, size) }))
     .sort((a, b) => b.score - a.score);
   const visibleRanked = showAll ? ranked : ranked.slice(0, 4);

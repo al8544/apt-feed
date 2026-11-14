@@ -2,9 +2,19 @@
 // Pure functions only; tested in lib/compare.test.ts.
 import type { GroupListing } from './api';
 
-// Flock score: 70% share of the flock that swiped right, 30% fit with everyone's prefs.
-export const flockScore = (l: GroupListing, groupSize: number) =>
+// Flock score (docs/DESIGN.md §7.3): 70% share of the flock that gave a thumbs-up, 30% fit with everyone's prefs.
+// Computed on read from the current votes and members, never stored, so it cannot go stale.
+export const flockScore = (l: Pick<GroupListing, 'likes' | 'match'>, groupSize: number) =>
   Math.round(70 * (groupSize ? l.likes / groupSize : 0) + 0.3 * l.match.pct);
+
+// Thumbs-down rule (§7.3): a place leaves the flock's active list when thumbs-down reaches half the active members,
+// rounded up (1 of 2, 2 of 3, 2 of 4, 3 of 5). Any thumbs-down short of that marks it contested. Pure; the votes stay in the
+// table, so a removed place is remembered and not suggested again.
+export const removalAt = (groupSize: number) => Math.ceil(groupSize / 2);
+export function voteState(down: number, groupSize: number): { removed: boolean; contested: boolean } {
+  const removed = groupSize > 0 && down >= removalAt(groupSize);
+  return { removed, contested: down > 0 && !removed };
+}
 
 export type MetricKey = 'rent' | 'bedBath' | 'sqft' | 'ppsf' | 'flockScore' | 'votes' | 'pets';
 
