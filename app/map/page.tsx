@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { getMapListings, getMySwipes, getStash, type GroupListing } from '@/lib/api';
+import { CURRENT_USER_ID, getMapListings, getMySwipes, getStash, type GroupListing } from '@/lib/api';
 import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
 import Icon from '@/components/Icon';
@@ -60,7 +60,12 @@ export default function MapPage() {
               onClick={() => setSelectedId(l.id)}
               zIndex={l.id === selectedId ? 10 : l.likes > 0 ? 5 : 1}
             >
-              <PricePill price={l.price} liked={l.likes > 0} selected={l.id === selectedId} />
+              <PricePill
+                price={l.price}
+                liked={l.likes > 0}
+                mine={l.likedBy.some((p) => p.id === CURRENT_USER_ID)}
+                selected={l.id === selectedId}
+              />
             </AdvancedMarker>
           ))}
           {me && (
