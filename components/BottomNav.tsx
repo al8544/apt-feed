@@ -19,7 +19,7 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
 
 export default function BottomNav() {
   const pathname = usePathname();
-  if (AUTH_PAGES.includes(pathname) || pathname === '/flocks' || pathname.startsWith('/join/')) return null; // before you're in a flock
+  if (AUTH_PAGES.includes(pathname) || pathname.startsWith('/flocks') || pathname.startsWith('/join/')) return null; // before you're in a flock
   const dark = pathname.startsWith('/reels') || pathname.startsWith('/map/'); // full-bleed photo screens
   return (
     <nav

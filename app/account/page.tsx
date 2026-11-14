@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DEMO, getAccountStats, getProfile, getStash, signOut, type Listing, type Profile } from '@/lib/api';
-import { GROUP_NAME, money, area } from '@/lib/format';
+import { DEMO, FLOCK_NAME, GROUP_ID, forgetFlock, getAccountStats, getProfile, getStash, leaveFlock, signOut, type Listing, type Profile } from '@/lib/api';
+import { money, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
@@ -98,7 +98,7 @@ export default function AccountPage() {
 
       <Section label="Account">
         <SettingsRow label="Username" value={profile ? `@${profile.username}` : ''} chevron={false} divider />
-        <SettingsRow label="Flocks" value={GROUP_NAME} onClick={() => router.push('/flocks')} divider />
+        <SettingsRow label="Flocks" value={FLOCK_NAME} onClick={() => router.push('/flocks')} divider />
         <SettingsRow label="Preferences" value="Budget, beds, pets" onClick={() => setEditOpen(true)} />
       </Section>
 
@@ -121,7 +121,19 @@ export default function AccountPage() {
 
       <Section label="Support">
         <SettingsRow label="Help & feedback" divider />
-        <SettingsRow label="Leave flock" danger divider />
+        {!DEMO && GROUP_ID && (
+          <SettingsRow
+            label="Leave flock"
+            danger
+            divider
+            onClick={async () => {
+              if (!window.confirm(`Leave ${FLOCK_NAME}? The others can keep going without you.`)) return;
+              await leaveFlock(GROUP_ID);
+              forgetFlock();
+              router.replace('/flocks');
+            }}
+          />
+        )}
         {!DEMO && <SettingsRow label="Log out" danger onClick={async () => (await signOut(), router.replace('/welcome'))} />}
       </Section>
 

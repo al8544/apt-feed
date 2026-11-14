@@ -10,8 +10,9 @@ import {
   type GroupListing,
   type Member,
   type Profile,
+  FLOCK_NAME,
 } from '@/lib/api';
-import { GROUP_NAME, groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
+import { groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
 import { inviteFriends } from '@/lib/share';
 import Avatar from '@/components/Avatar';
 import SettingsRow from '@/components/SettingsRow';
@@ -19,6 +20,7 @@ import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
 import { flockScore as score } from '@/lib/compare';
 import RankingRow from '@/components/RankingRow';
+import SmallerFlockPrompt from '@/components/SmallerFlockPrompt';
 
 
 export default function GroupPage() {
@@ -44,7 +46,7 @@ export default function GroupPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const invite = async () => setToast(await inviteFriends(GROUP_NAME));
+  const invite = async () => setToast(await inviteFriends(FLOCK_NAME));
 
   const size = members?.length ?? 0;
   const prefs = members ? groupPrefs(members) : null;
@@ -64,8 +66,9 @@ export default function GroupPage() {
 
   return (
     <main className="min-h-dvh bg-card pb-4">
+      <SmallerFlockPrompt />
       <header className="flex items-center gap-1 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
-        <h1 className="text-[26px] font-bold text-ink">{GROUP_NAME}</h1>
+        <h1 className="text-[26px] font-bold text-ink">{FLOCK_NAME}</h1>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/down.svg" alt="" width={18} height={18} />
         <div className="flex-1" />

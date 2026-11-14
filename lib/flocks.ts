@@ -36,3 +36,14 @@ export function parseCreateFlock(body: unknown): { ok: true; value: CreateFlock 
   if (open && kind !== 'open') return { ok: false, error: 'only an open flock can be open_to_join.' };
   return { ok: true, value: { name, kind, about, looking_for: looking, open_to_join: open, join_rules: rules as CreateFlock['join_rules'], max_size: max as number | null, bedrooms_needed: beds as number | null, filters } };
 }
+
+// Choices shared by the create and find screens (Figma 00f, 00i). Canonical LA neighborhood names (§7.2).
+export const LA_AREAS = ['Silver Lake', 'Echo Park', 'Los Feliz', 'Koreatown', 'Hollywood', 'Downtown', 'Culver City', 'Highland Park', 'Santa Monica', 'Venice'];
+
+// Budget per person: [label, min, max]; null = no bound.
+export const BUDGETS: [string, number | null, number | null][] = [
+  ['Any', null, null], ['$1-2k', 1000, 2000], ['$2-3k', 2000, 3000], ['$3-4k', 3000, 4000], ['$4k+', 4000, null],
+];
+
+// Bedrooms: [label, value]; 3 means "3 or more".
+export const BEDROOMS: [string, number][] = [['Studio', 0], ['1', 1], ['2', 2], ['3+', 3]];

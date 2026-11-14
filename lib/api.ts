@@ -29,6 +29,20 @@ export function setSessionUser(userId: string): void {
 
 export const storedFlockId = () => (DEMO ? DEMO_FLOCK_ID : stored(FLOCK_KEY));
 
+// The current flock's name, loaded by SessionGate with loadCurrentFlock().
+export let FLOCK_NAME = '';
+
+// Checks the saved flock still exists and you're still in it; false = pick again on Your flocks.
+export async function loadCurrentFlock(): Promise<boolean> {
+  if (!GROUP_ID) return false;
+  const { data } = await supabase
+    .from('flock_members').select('flock:flocks(name)')
+    .eq('flock_id', GROUP_ID).eq('user_id', CURRENT_USER_ID).eq('status', 'active').maybeSingle();
+  const name = (data as { flock: { name: string } | null } | null)?.flock?.name;
+  FLOCK_NAME = name ?? '';
+  return !!name;
+}
+
 // Pick the flock every screen reads (00d "Your flocks"). Remembered on this device.
 export function selectFlock(flockId: string): void {
   try { window.localStorage.setItem(FLOCK_KEY, flockId); } catch { /* storage blocked: this visit only */ }
@@ -40,6 +54,12 @@ export function switchUser(userId: string): void {
   try { window.localStorage.setItem(USER_KEY, userId); } catch { /* storage blocked: switch for this page only */ }
   CURRENT_USER_ID = userId;
   window.location.reload();
+}
+
+// After leaving a flock: nothing selected, so the gate sends you to Your flocks.
+export function forgetFlock(): void {
+  try { window.localStorage.removeItem(FLOCK_KEY); } catch { /* nothing stored */ }
+  GROUP_ID = '';
 }
 
 export async function signOut(): Promise<void> {
@@ -74,6 +94,63 @@ export async function getMyFlocks(): Promise<FlockSummary[]> {
     members: f.flock_members.filter((m) => m.status === 'active').map((m) => m.user),
     areas: f.filters?.areas ?? [], budgetMin: f.filters?.budget_min ?? null, budgetMax: f.filters?.budget_max ?? null,
   }));
+}
+
+// Route Handlers check the caller's token (lib/server/auth.ts), so send it.
+async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const { data } = await supabase.auth.getSession();
+  const headers = new Headers(init.headers);
+  if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`);
+  if (init.body) headers.set('Content-Type', 'application/json');
+  return fetch(path, { ...init, headers });
+}
+
+async function json<T>(res: Response): Promise<T> {
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
+  return body as T;
+}
+
+// 00f / 00h: create a flock; the caller becomes its admin. Body is validated by lib/flocks.ts on the server.
+export async function createFlock(body: Record<string, unknown>): Promise<string> {
+  return (await json<{ id: string }>(await authFetch('/api/flocks', { method: 'POST', body: JSON.stringify(body) }))).id;
+}
+
+// 00j: join an open flock. 'joined' | 'requested' | 'full' | 'closed' | 'already_member'.
+export async function joinFlock(flockId: string): Promise<string> {
+  const res = await authFetch(`/api/flocks/${flockId}/join`, { method: 'POST' });
+  const body = await res.json().catch(() => ({}));
+  if (body.status) return body.status as string; // 409 full/closed still carries a status
+  throw new Error(body.error ?? `Request failed (${res.status})`);
+}
+
+// 00i / 00j: open flocks ranked by compatibility, computed on the server (others' details never reach the browser).
+export type DiscoveredFlock = {
+  id: string; name: string; about: string | null; lookingFor: string | null;
+  members: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_color'>[];
+  maxSize: number | null; area: string | null; budgetMin: number | null; budgetMax: number | null;
+  matchPct: number; passes: boolean; checks: { key: string; ok: boolean | null; reason: string }[];
+  createdAt: string;
+};
+
+export async function discoverFlocks(): Promise<DiscoveredFlock[]> {
+  return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch('/api/flocks/discover'))).flocks;
+}
+
+export async function getFlockProfile(flockId: string): Promise<DiscoveredFlock | null> {
+  return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch(`/api/flocks/discover?id=${encodeURIComponent(flockId)}`))).flocks[0] ?? null;
+}
+
+export async function leaveFlock(flockId: string): Promise<void> {
+  check(await supabase.rpc('leave_flock', { p_flock_id: flockId }));
+}
+
+// People who left the current flock (for "Continue as a smaller flock?").
+export async function getLeftMembers(): Promise<Profile[]> {
+  const rows = check(
+    await supabase.from('flock_members').select('user:profiles(*)').eq('flock_id', GROUP_ID).eq('status', 'left')
+  ) as unknown as { user: Profile }[];
+  return rows.map((r) => r.user);
 }
 
 // Invite link (/join/<flock id>): adds the signed-in user to that flock. Returns 'joined' | 'already_member' | 'full'.
@@ -331,7 +408,7 @@ export async function getProfile(userId = CURRENT_USER_ID): Promise<Profile> {
 }
 
 export async function updatePreferences(
-  prefs: Partial<Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio'>>
+  prefs: Partial<Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio'>> & { about?: string | null; dealbreakers_text?: string | null }
 ): Promise<void> {
   check(await supabase.from('profiles').update(prefs).eq('id', CURRENT_USER_ID));
 }

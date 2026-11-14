@@ -2,11 +2,11 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { DEMO, setSessionUser, storedFlockId } from '@/lib/api';
+import { DEMO, forgetFlock, loadCurrentFlock, setSessionUser, storedFlockId } from '@/lib/api';
 
 // Pages that work signed out, and pages that work before a flock is picked.
 export const AUTH_PAGES = ['/welcome', '/signin', '/signup'];
-const NO_FLOCK_OK = (p: string) => p === '/flocks' || p.startsWith('/join/') || p === '/account';
+const NO_FLOCK_OK = (p: string) => p.startsWith('/flocks') || p.startsWith('/join/') || p === '/account';
 
 // Reads the Supabase session once and sets CURRENT_USER_ID before any screen fetches data.
 // Signed out → Welcome; no flock picked yet → Your flocks (docs/DESIGN.md §10, Figma 00a–00d).
@@ -15,6 +15,7 @@ export default function SessionGate({ children }: { children: React.ReactNode })
   const router = useRouter();
   const open = DEMO || AUTH_PAGES.includes(path);
   const [user, setUser] = useState<string | null | undefined>(undefined); // undefined = still loading
+  const [flockReady, setFlockReady] = useState(false);
 
   useEffect(() => {
     if (DEMO) return;
@@ -35,6 +36,15 @@ export default function SessionGate({ children }: { children: React.ReactNode })
     return () => data.subscription.unsubscribe();
   }, []);
 
+  // Once signed in: confirm the saved flock (and load its name); a flock you left sends you back to Your flocks.
+  useEffect(() => {
+    if (DEMO || !user || !storedFlockId()) return;
+    loadCurrentFlock().then((ok) => {
+      if (!ok) forgetFlock();
+      setFlockReady(true);
+    });
+  }, [user, path]);
+
   const needsSignIn = !open && user === null; // checked, and nobody is signed in
   const needsFlock = !open && !!user && !storedFlockId() && !NO_FLOCK_OK(path);
   useEffect(() => {
@@ -43,6 +53,7 @@ export default function SessionGate({ children }: { children: React.ReactNode })
   }, [needsSignIn, needsFlock, path, router]);
 
   if (open) return <>{children}</>;
-  if (!user || needsFlock) return <div className="min-h-dvh bg-card" aria-busy="true" />;
+  if (!user || needsFlock || (!flockReady && !!storedFlockId() && !NO_FLOCK_OK(path)))
+    return <div className="min-h-dvh bg-card" aria-busy="true" />;
   return <>{children}</>;
 }

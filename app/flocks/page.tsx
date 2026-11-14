@@ -73,11 +73,8 @@ export default function YourFlocksPage() {
       )}
 
       <div className="flex-1" />
-      {/* Create (00e–00h) and Find (00i–00j) are the next ticket; the API for them already exists. */}
-      <Button disabled title="Coming soon">
-        Create a new flock
-      </Button>
-      <Button secondary disabled title="Coming soon">
+      <Button href="/flocks/new">Create a new flock</Button>
+      <Button href="/flocks/find" secondary>
         Find a flock
       </Button>
     </main>

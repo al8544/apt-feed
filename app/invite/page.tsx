@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { GROUP_NAME } from '@/lib/format';
+import { FLOCK_NAME } from '@/lib/api';
 import { inviteFriends, inviteLink } from '@/lib/share';
 import NavBar from '@/components/NavBar';
 
@@ -17,7 +17,7 @@ export default function InvitePage() {
         <label className="text-base font-bold text-ink">Invite link</label>
         <div suppressHydrationWarning className="rough rounded-md px-3.5 py-3 text-lg text-muted [--fill:var(--color-surface)]">{link.replace(/^https?:\/\//, '') || ' '}</div>
         <button
-          onClick={async () => setNote(await inviteFriends(GROUP_NAME))}
+          onClick={async () => setNote(await inviteFriends(FLOCK_NAME))}
           className="rough rounded-lg py-3 text-lg font-bold text-ink [--fill:var(--color-surface)]"
         >
           Share link
