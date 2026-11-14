@@ -89,6 +89,20 @@ node scripts/test-flocks.mjs
 Creates throwaway users and flocks in the local database, races two joins for the last seat 25 times, checks that non-members
 read nothing, then deletes everything. It refuses to run against anything but 127.0.0.1.
 
+## Test the agent
+
+```bash
+node --test lib/agent/agent.test.ts      # no database, no key
+node scripts/test-agent-db.mjs           # database side under RLS (needs the migrations-only database)
+```
+
+For the real-model checks, put `OPENAI_API_KEY` in `.env.local`, load the demo data below, start `npm run dev:local`, then run
+`node scripts/demo-agent.mjs` (a few cents). `node scripts/test-agent-api.mjs` checks the HTTP gates with a dummy key:
+start the app with `OPENAI_API_KEY=dummy AGENT_DAILY_LIMIT=3 npm run dev:local` first.
+
+The database-side tests refuse to run once `dev-open-access.sql` is applied, so run them right after `supabase db reset`, then reload
+the LA data, the galleries, the open-access file and the cutover for the demo.
+
 ## Check row-level security
 
 ```bash
