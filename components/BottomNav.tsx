@@ -28,6 +28,7 @@ export default function BottomNav() {
       <ul className="flex h-16 items-start pt-2">
         {TABS.map(({ href, label, icon, match }) => {
           const active = match(pathname);
+          const tone = active ? (dark ? 'text-cream' : 'text-ink') : 'text-icon-off';
           return (
             <li key={href} className="flex-1">
               <Link

@@ -84,7 +84,7 @@ export default function AccountPage() {
         <div className={showAllStash ? 'grid grid-cols-3 gap-2.5 px-4' : 'no-scrollbar flex gap-2.5 overflow-x-auto px-4'}>
           {stash.map((l) => (
             <div key={l.id} className={`flex flex-col gap-1.5 ${showAllStash ? '' : 'w-[108px] shrink-0'}`}>
-              <ListingPhoto listing={l} className="aspect-square w-full rounded-[14px]" />
+              <ListingPhoto listing={l} rough className="aspect-square w-full rounded-[14px]" />
               <div>
                 <p className="text-[15px] font-bold text-ink">{money(l.price)}/mo</p>
                 <p className="truncate text-sm text-muted">{l.neighborhood}</p>
