@@ -67,17 +67,14 @@ Check the result in Studio, or with `docker exec -i supabase_db_flock psql -U po
 
 ## Run the app against it
 
-A plain `npm run dev` talks to the **real** project (it reads `.env.local`). To use the local database, set the
-variables on the command line. Shell variables beat `.env.local`:
-
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
-NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status -o json | python3 -c 'import sys,json;print(json.load(sys.stdin)["ANON_KEY"])') \
-npm run dev
+npm run dev:local
 ```
 
-Keep it on port 3000: the Google Maps key only works there. Stop the dev server with Ctrl+C. Do not leave it running
-and then start a plain `npm run dev` expecting the real data.
+It reads the local database's URL and key from `supabase status` and starts the app on port 3000, with nothing
+changed in `.env.local`. It stops with an error if the local database is not running. Stop the app with Ctrl+C.
+
+A plain `npm run dev` still talks to the **real** project. Keep the app on port 3000: the Google Maps key only works there.
 
 ## Check row-level security
 
