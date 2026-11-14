@@ -22,7 +22,7 @@ function PanTo({ point }: { point: { lat: number; lng: number } | null }) {
   return null;
 }
 
-// Drop a private commute pin: tap the map where you travel to most. Only distances are ever shared with your flock.
+// Drop a commute pin: search an address or tap the map where you travel to most. Your flockmates can see it (migration 0019).
 export default function PinSheet({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: (pin: Pin | null) => void }) {
   const [pin, setPin] = useState<Pin | null>(null);
   const [label, setLabel] = useState('');
@@ -61,7 +61,7 @@ export default function PinSheet({ open, onClose, onSaved }: { open: boolean; on
       open={open}
       onClose={onClose}
       title="Commute pin"
-      subtitle="Search an address or tap the map. Only distances are shared."
+      subtitle="Search an address or tap the map. Your flock can see this pin."
       footer={
         <div className="flex gap-3">
           {pin && (
@@ -110,7 +110,7 @@ export default function PinSheet({ open, onClose, onSaved }: { open: boolean; on
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           maxLength={60}
-          placeholder="Label, e.g. Work (only you see it)"
+          placeholder="Label, e.g. Work (your flock sees it)"
           className="rough w-full rounded-md px-3 py-2.5 text-lg text-ink"
         />
         {error && <p className="text-[15px] text-danger">{error}</p>}

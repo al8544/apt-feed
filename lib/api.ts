@@ -116,7 +116,7 @@ async function json<T>(res: Response): Promise<T> {
 
 export { REASONS as FEEDBACK_REASONS } from './agent/feedback';
 
-// The commute pin: where you travel to most. Private to you (row-level security); the flock only ever gets distances (migration 0018).
+// The commute pin: where you travel to most. You change it; your flockmates can see it, in friends and open flocks alike (migrations 0018, 0019).
 export type Pin = { lat: number; lng: number; label: string | null };
 export async function getMyPin(): Promise<Pin | null> {
   return (check(await supabase.from('member_pins').select('lat,lng,label').eq('user_id', CURRENT_USER_ID).maybeSingle()) as Pin | null) ?? null;
