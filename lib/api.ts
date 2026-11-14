@@ -72,7 +72,7 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 // ---------- Group helpers ----------
 async function getMemberProfiles(): Promise<Profile[]> {
   const rows = check(
-    await supabase.from('group_members').select('role, user:profiles(*)').eq('group_id', GROUP_ID)
+    await supabase.from('flock_members').select('role, user:profiles(*)').eq('flock_id', GROUP_ID).eq('status', 'active')
   ) as unknown as { role: string; user: Profile }[];
   return rows.map((r) => r.user);
 }
@@ -97,7 +97,7 @@ async function decorate(listings: Listing[], members?: Profile[]): Promise<Group
   const people = members ?? (await getMemberProfiles());
   const byId = new Map(people.map((p) => [p.id, p]));
   const likeRows = check(
-    await supabase.from('group_likes').select('listing_id, likes, liked_by').eq('group_id', GROUP_ID)
+    await supabase.from('flock_votes').select('listing_id, likes, liked_by').eq('flock_id', GROUP_ID)
   ) as { listing_id: string; likes: number; liked_by: string[] }[];
   const likes = new Map(likeRows.map((r) => [r.listing_id, r]));
 
@@ -117,7 +117,7 @@ export async function getStories(): Promise<Story[]> {
   const members = await getMemberProfiles();
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const recent = check(
-    await supabase.from('swipes').select('user_id').gte('created_at', since)
+    await supabase.from('swipes').select('user_id').gte('created_at', since).eq('flock_id', GROUP_ID)
       .in('user_id', members.map((m) => m.id))
   ) as { user_id: string }[];
   const active = new Set(recent.map((r) => r.user_id));
@@ -132,7 +132,7 @@ export async function getGroupFeed(limit = 30): Promise<FeedPost[]> {
   const rows = check(
     await supabase.from('swipes')
       .select(`created_at, user:profiles(*), listing:listings(${LISTING_COLS})`)
-      .eq('direction', 'right')
+      .eq('direction', 'right').eq('flock_id', GROUP_ID)
       .in('user_id', members.map((m) => m.id))
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -148,7 +148,7 @@ export async function getGroupFeed(limit = 30): Promise<FeedPost[]> {
 // review = 'right' | 'left': instead of the unseen listings, the ones you already liked / passed on.
 export async function getSwipeDeck(limit = 20, review?: 'right' | 'left'): Promise<GroupListing[]> {
   const swiped = check(
-    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID)
+    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID).eq('flock_id', GROUP_ID)
   ) as { listing_id: string; direction: 'left' | 'right' }[];
   const dirs = new Map(swiped.map((s) => [s.listing_id, s.direction]));
   const listings = (check(await supabase.from('listing_cards').select(CARD_COLS)) as Listing[]).filter((l) =>
@@ -160,18 +160,19 @@ export async function getSwipeDeck(limit = 20, review?: 'right' | 'left'): Promi
 
 export async function swipe(listingId: string, direction: 'right' | 'left'): Promise<void> {
   check(await supabase.from('swipes').upsert(
-    { user_id: CURRENT_USER_ID, listing_id: listingId, direction, created_at: new Date().toISOString() }
+    { user_id: CURRENT_USER_ID, listing_id: listingId, flock_id: GROUP_ID, direction, created_at: new Date().toISOString() },
+    { onConflict: 'user_id,listing_id,flock_id' }
   ));
 }
 
 export async function undoSwipe(listingId: string): Promise<void> {
-  check(await supabase.from('swipes').delete().eq('user_id', CURRENT_USER_ID).eq('listing_id', listingId));
+  check(await supabase.from('swipes').delete().eq('user_id', CURRENT_USER_ID).eq('listing_id', listingId).eq('flock_id', GROUP_ID));
 }
 
 // Every listing the current user has swiped on ("seen"), with which way.
 export async function getMySwipes(): Promise<Map<string, 'left' | 'right'>> {
   const rows = check(
-    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID)
+    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID).eq('flock_id', GROUP_ID)
   ) as { listing_id: string; direction: 'left' | 'right' }[];
   return new Map(rows.map((r) => [r.listing_id, r.direction]));
 }
@@ -210,7 +211,7 @@ export async function getTours(year: number, month: number /* 1-12 */): Promise<
   const rows = check(
     await supabase.from('tours')
       .select(`id, starts_at, listing:listings(${LISTING_COLS}), tour_attendees(user:profiles(*))`)
-      .eq('group_id', GROUP_ID).gte('starts_at', start).lt('starts_at', end)
+      .eq('flock_id', GROUP_ID).gte('starts_at', start).lt('starts_at', end)
       .order('starts_at')
   ) as unknown as { id: string; starts_at: string; listing: Listing; tour_attendees: { user: Profile }[] }[];
   return rows.map((r) => ({
@@ -230,7 +231,7 @@ export async function getTour(id: string): Promise<Tour | null> {
 // Listings the flock has a tour booked for (any date).
 export async function getTouredListingIds(): Promise<Set<string>> {
   const rows = check(
-    await supabase.from('tours').select('listing_id').eq('group_id', GROUP_ID)
+    await supabase.from('tours').select('listing_id').eq('flock_id', GROUP_ID)
   ) as { listing_id: string }[];
   return new Set(rows.map((r) => r.listing_id));
 }
@@ -238,7 +239,7 @@ export async function getTouredListingIds(): Promise<Set<string>> {
 export async function createTour(listingId: string, startsAt: Date, attendeeIds: string[] = [CURRENT_USER_ID]): Promise<string> {
   const tour = check(
     await supabase.from('tours')
-      .insert({ group_id: GROUP_ID, listing_id: listingId, starts_at: startsAt.toISOString(), created_by: CURRENT_USER_ID })
+      .insert({ flock_id: GROUP_ID, listing_id: listingId, starts_at: startsAt.toISOString(), created_by: CURRENT_USER_ID })
       .select('id').single()
   ) as { id: string };
   check(await supabase.from('tour_attendees').insert(attendeeIds.map((user_id) => ({ tour_id: tour.id, user_id }))));
@@ -280,10 +281,10 @@ export async function updatePreferences(
 
 export async function getGroupMembers(): Promise<Member[]> {
   const rows = check(
-    await supabase.from('group_members').select('role, user:profiles(*)').eq('group_id', GROUP_ID)
+    await supabase.from('flock_members').select('role, user:profiles(*)').eq('flock_id', GROUP_ID).eq('status', 'active')
   ) as unknown as { role: string; user: Profile }[];
   const swipes = check(
-    await supabase.from('swipes').select('user_id').in('user_id', rows.map((r) => r.user.id))
+    await supabase.from('swipes').select('user_id').eq('flock_id', GROUP_ID).in('user_id', rows.map((r) => r.user.id))
   ) as { user_id: string }[];
   const counts = new Map<string, number>();
   swipes.forEach((s) => counts.set(s.user_id, (counts.get(s.user_id) ?? 0) + 1));
@@ -325,12 +326,12 @@ export function subscribeToMessages(onMessage: (m: Message) => void): () => void
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }
-// ---------- Live group activity (needs: alter publication supabase_realtime add table swipes;) ----------
-// Calls onChange whenever anyone swipes or undoes a swipe. Returns an unsubscribe function.
+// ---------- Live flock activity (swipes are in the realtime publication, migration 0001) ----------
+// Calls onChange whenever anyone in the flock swipes or undoes a swipe. Returns an unsubscribe function.
 export function subscribeToGroupSwipes(onChange: () => void): () => void {
   const channel = supabase
     .channel(`group-swipes:${GROUP_ID}:${Math.random().toString(36).slice(2)}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'swipes' }, () => onChange())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'swipes', filter: `flock_id=eq.${GROUP_ID}` }, () => onChange())
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

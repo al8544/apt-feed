@@ -236,6 +236,8 @@ create table aerial_queries (           -- cache of Vexcel semantic searches, on
 
 ### 5.3 People, flocks, decisions
 
+**Status (T6, built and tested on a local database only):** `supabase/migrations/0008_flocks.sql`. Differences from the sketch below: `groups` and `group_members` were renamed (not new tables) to `flocks` and `flock_members`; `flock_members.status` defaults existing rows to `active`; `swipes.flock_id` is backfilled from membership and the migration refuses to run if someone swiped without being in any flock; `flock_votes` also exposes `likes` and `liked_by` so `lib/api.ts` reads it as it read `group_likes`; `flocks.discoverable` was added; `listing_comments` and `shortlist` are not built yet. `join_flock` returns a status text (`joined`, `requested`, `full`, `closed`, `already_member`) and its rule check (`flock_rules_ok`) is deliberately basic until `compat()` (T7) replaces it. `scripts/test-flocks.mjs` races two joins for the last seat 25 times and checks that non-members read nothing.
+
 ```sql
 alter table profiles
   add column if not exists budget_max int,            -- max monthly rent SHARE this person accepts

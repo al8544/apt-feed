@@ -76,6 +76,15 @@ changed in `.env.local`. It stops with an error if the local database is not run
 
 A plain `npm run dev` still talks to the **real** project. Keep the app on port 3000: the Google Maps key only works there.
 
+## Test the flock functions
+
+```bash
+node scripts/test-flocks.mjs
+```
+
+Creates throwaway users and flocks in the local database, races two joins for the last seat 25 times, checks that non-members
+read nothing, then deletes everything. It refuses to run against anything but 127.0.0.1.
+
 ## Check row-level security
 
 ```bash
