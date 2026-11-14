@@ -12,7 +12,7 @@ const gaegu = Gaegu({
 });
 
 export const metadata: Metadata = {
-  title: "aptHunt",
+  title: "Flock",
   description: "Apartment hunting with your flock",
 };
 
