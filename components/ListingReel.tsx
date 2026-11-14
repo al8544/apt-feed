@@ -206,6 +206,18 @@ function SwipeCard({
   const el = useRef<HTMLDivElement>(null);
   const photoCount = Math.max(1, listing.photos.length);
 
+  // Photos are big hotlinked images. Fetch the neighbors of the one on screen ahead of time, so a tap shows the next
+  // photo at once instead of a gradient or the old picture for a moment.
+  useEffect(() => {
+    for (const i of [photo + 1, photo + 2, photo - 1]) {
+      const url = listing.photos[i];
+      if (!url) continue;
+      const img = new Image();
+      img.src = url;
+      img.decode().catch(() => {}); // decode now too: a big JPEG decoded on the tap is part of the lag
+    }
+  }, [photo, listing.photos]);
+
   function fling(dir: Direction) {
     if (leaving.current) return;
     leaving.current = true;
