@@ -138,7 +138,7 @@ function FiltersBody({
         role="dialog"
         aria-modal="true"
         aria-label="Filters"
-        className="rough absolute bottom-0 flex h-[min(760px,90dvh)] w-full max-w-[430px] flex-col rounded-t-[10px] drop-shadow-[0_-4px_12px_rgba(69,38,13,0.18)]"
+        className="rough absolute bottom-0 flex h-[min(760px,90dvh)] w-full max-w-[430px] flex-col rounded-t-[10px]"
       >
         <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2.5 pb-1.5">
           <div className="h-[5px] w-10 rounded-[3px] bg-line" />

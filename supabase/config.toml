@@ -1,0 +1,2 @@
+# Minimal config so the Supabase CLI treats this folder as a project (`supabase start`, `supabase db push`).
+project_id = "flock"
