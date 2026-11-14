@@ -1,0 +1,66 @@
+{
+  "_note": "Synthetic: the real response shape recorded from live calls in Nov 2026, with made-up coordinates and values. Vexcel returned several parcels for one point (stacked or condo-style) and marked every one inside-parcel true.",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": []
+      },
+      "properties": {
+        "structure.count": 1,
+        "metadata.collection": "us-ca-glendale-2024",
+        "request-information.inside-parcel": true,
+        "pool.detected": true,
+        "pool.score": 0.8,
+        "parcel-tree-cover.percent": 13
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": []
+      },
+      "properties": {
+        "structure.count": 2,
+        "metadata.collection": "us-ca-glendale-2024",
+        "request-information.inside-parcel": true,
+        "pool.detected": true,
+        "pool.score": 1,
+        "parcel-tree-cover.percent": 8.59
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": []
+      },
+      "properties": {
+        "structure.count": 1,
+        "metadata.collection": "us-ca-glendale-2024",
+        "request-information.inside-parcel": true,
+        "pool.detected": false,
+        "pool.score": null,
+        "parcel-tree-cover.percent": 5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": []
+      },
+      "properties": {
+        "structure.count": 1,
+        "metadata.collection": "us-ca-glendale-2024",
+        "request-information.inside-parcel": true,
+        "pool.detected": false,
+        "pool.score": null,
+        "parcel-tree-cover.percent": 0
+      }
+    }
+  ]
+}

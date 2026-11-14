@@ -1,0 +1,36 @@
+{
+  "_note": "Synthetic: the real response shape recorded from live calls in Nov 2026, with made-up coordinates and values.",
+  "type": "FeatureCollection",
+  "images": [
+    {
+      "image-id": "ortho-1",
+      "endpoint": "ortho/extract",
+      "metadata": {
+        "collection": "us-ca-losangeles-2025",
+        "last-capture-date": 1765400614000,
+        "layer": "urban",
+        "pixel-bbox": "1,2,3,4"
+      }
+    }
+  ],
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "label": "swimming pool",
+        "detections": [
+          {
+            "imageId": "ortho-1",
+            "bbox": "POLYGON ((-118.11 34.1, -118.11 34.2, -118.21 34.2, -118.21 34.1, -118.11 34.1))",
+            "confidence": 0.62
+          },
+          {
+            "imageId": "ortho-1",
+            "bbox": "POLYGON ((-118.12 34.1, -118.12 34.2, -118.22 34.2, -118.22 34.1, -118.12 34.1))",
+            "confidence": 0.70166015625
+          }
+        ]
+      }
+    }
+  ]
+}

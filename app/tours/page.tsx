@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getGroupMembers, getMapListings, getTours, type GroupListing, type Tour } from '@/lib/api';
 import { money, sameDay, area } from '@/lib/format';
+import Link from 'next/link';
 import TourCard from '@/components/TourCard';
 import Sheet from '@/components/Sheet';
 import BookTourSheet from '@/components/BookTourSheet';
@@ -183,6 +184,10 @@ export default function ToursPage() {
 
       <div className="h-[0.5px] bg-line" />
 
+      {mode === 'week' ? (
+        <WeekGrid days={cells as Date[]} tours={tours ?? []} selected={selected} />
+      ) : (
+        <>
       {onSelectedDay.length > 0 && (
         <>
           <div className="flex items-baseline gap-2 px-4 pt-4 pb-2.5">
@@ -222,6 +227,8 @@ export default function ToursPage() {
           </p>
         )}
       </div>
+        </>
+      )}
 
       <PickListingSheet open={pickOpen} onClose={() => setPickOpen(false)} onPick={(l) => (setPickOpen(false), setTouring(l))} />
       <BookTourSheet
@@ -299,5 +306,49 @@ function PickListingSheet({ open, onClose, onPick }: { open: boolean; onClose: (
             ))}
       </div>
     </Sheet>
+  );
+}
+
+const GRID_FIRST = 8; // 8 AM
+const GRID_HOURS = 12; // to 8 PM
+const HOUR_PX = 45;
+
+// Week view: a time grid with one block per tour (Figma 04e). Tours have no end time, so a block is one hour.
+// shortcut: tours before 8 AM or after 8 PM are pinned to the first/last row, widen the range if that matters.
+function WeekGrid({ days, tours, selected }: { days: Date[]; tours: Tour[]; selected: Date }) {
+  return (
+    <div className="relative ml-11 mr-1 mt-0.5 mb-24" style={{ height: GRID_HOURS * HOUR_PX }}>
+      {Array.from({ length: GRID_HOURS }, (_, i) => (
+        <div key={i} className="absolute right-0 left-0 border-t border-line/25" style={{ top: i * HOUR_PX }}>
+          <span className="absolute -left-11 pl-1.5 text-xs text-muted">{new Date(2000, 0, 1, GRID_FIRST + i).toLocaleTimeString('en-US', { hour: 'numeric' })}</span>
+        </div>
+      ))}
+      <div className="absolute inset-0 grid grid-cols-7">
+        {days.map((day, i) => (
+          <div key={i} className="relative border-l border-line/15">
+            {tours
+              .filter((t) => sameDay(new Date(t.startsAt), day))
+              .map((t) => {
+                const at = new Date(t.startsAt);
+                const hour = Math.min(Math.max(at.getHours() + at.getMinutes() / 60, GRID_FIRST), GRID_FIRST + GRID_HOURS - 1);
+                const on = sameDay(day, selected);
+                return (
+                  <Link
+                    key={t.id}
+                    href={`/tours/${t.id}`}
+                    className={`absolute inset-x-0.5 overflow-hidden rounded-md border-[1.5px] px-[3px] leading-tight ${
+                      on ? 'border-ink bg-ink text-card' : 'border-accent bg-accent-soft text-ink'
+                    }`}
+                    style={{ top: (hour - GRID_FIRST) * HOUR_PX + 1, height: HOUR_PX - 2 }}
+                  >
+                    <span className="block text-xs font-bold">{at.toLocaleTimeString('en-US', { hour: 'numeric', ...(at.getMinutes() ? { minute: '2-digit' } : {}) })}</span>
+                    <span className="block text-[11px]">{t.listing.address}</span>
+                  </Link>
+                );
+              })}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
