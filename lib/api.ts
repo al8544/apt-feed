@@ -2,8 +2,27 @@
 // UI code should import from this file only, never call supabase directly.
 import { supabase } from './supabase';
 
-// Until login is built, everyone is "Vinnie" in the "Brooklyn Crew" group (ids from seed.sql).
-export const CURRENT_USER_ID = '00000000-0000-0000-0000-000000000001';
+// No real login yet: the "current user" is whichever crew member was picked in the
+// user switcher (saved in this browser), defaulting to Vinnie. Ids come from seed.sql.
+const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
+const USER_KEY = 'aptHunt.userId';
+
+function loadCurrentUser(): string {
+  try {
+    return (typeof window !== 'undefined' && window.localStorage.getItem(USER_KEY)) || DEFAULT_USER_ID;
+  } catch {
+    return DEFAULT_USER_ID;
+  }
+}
+
+export let CURRENT_USER_ID = loadCurrentUser();
+
+// Switch who you are (demo only), then reload so every screen refetches as that person.
+export function switchUser(userId: string): void {
+  try { window.localStorage.setItem(USER_KEY, userId); } catch { /* storage blocked: switch for this page only */ }
+  CURRENT_USER_ID = userId;
+  window.location.reload();
+}
 export const GROUP_ID = '00000000-0000-0000-0000-0000000000a1';
 
 // ---------- Types ----------
