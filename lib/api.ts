@@ -117,7 +117,7 @@ export async function createFlock(body: Record<string, unknown>): Promise<string
   return (await json<{ id: string }>(await authFetch('/api/flocks', { method: 'POST', body: JSON.stringify(body) }))).id;
 }
 
-// 00j: join an open flock. 'joined' | 'requested' | 'full' | 'closed' | 'already_member'.
+// 00j: ask to join an open flock. 'requested' | 'mismatch' | 'full' | 'closed' | 'already_member' ('joined' = accepted an invite).
 export async function joinFlock(flockId: string): Promise<string> {
   const res = await authFetch(`/api/flocks/${flockId}/join`, { method: 'POST' });
   const body = await res.json().catch(() => ({}));
@@ -148,6 +148,14 @@ export async function getFlockMatches(): Promise<FlockMatch[]> {
 
 export async function getFlockProfile(flockId: string): Promise<DiscoveredFlock | null> {
   return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch(`/api/flocks/discover?id=${encodeURIComponent(flockId)}`))).flocks[0] ?? null;
+}
+
+// 05: the admin's open/closed switch. Open = listed in Find a flock, and people send a request.
+export async function getFlockOpen(): Promise<boolean> {
+  return (check(await supabase.from('flocks').select('open_to_join').eq('id', GROUP_ID).single()) as { open_to_join: boolean }).open_to_join;
+}
+export async function setFlockOpen(open: boolean): Promise<void> {
+  check(await supabase.rpc('set_flock_open', { p_flock_id: GROUP_ID, p_open: open }));
 }
 
 export async function leaveFlock(flockId: string): Promise<void> {

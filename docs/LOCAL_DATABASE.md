@@ -34,7 +34,7 @@ To free the disk space, stop it, quit Docker Desktop, and optionally run `docker
 supabase db reset
 ```
 
-This drops everything and reapplies migrations `0001` to `0011`. The LA data and the cutover are gone afterwards, and
+This drops everything and reapplies migrations `0001` to `0013`. The LA data and the cutover are gone afterwards, and
 the Brooklyn seed is back. Redo the load below.
 
 ## Load the LA data (from an empty or freshly reset database)

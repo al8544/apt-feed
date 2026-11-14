@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/server/auth';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // POST /api/flocks/[id]/join: calls the join_flock database function (one transaction: lock, rules, max_size).
-// Answers { status }: joined | requested | full | closed | already_member.
+// Answers { status }: requested | mismatch | full | closed | already_member (joined = accepted an invite).
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const caller = await requireUser(request);
   if (caller instanceof Response) return caller;

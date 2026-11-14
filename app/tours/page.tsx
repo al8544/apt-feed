@@ -28,6 +28,7 @@ export default function ToursPage() {
   const start = addedAt ?? today;
   const [view, setView] = useState({ year: start.getFullYear(), month: start.getMonth() + 1 });
   const [selected, setSelected] = useState<Date>(today);
+  const [mode, setMode] = useState<'week' | 'month'>('month');
   const [tours, setTours] = useState<Tour[] | null>(null);
   const [groupSize, setGroupSize] = useState<number>();
   const [error, setError] = useState<string | null>(null);
@@ -67,14 +68,42 @@ export default function ToursPage() {
       return { year: d.getFullYear(), month: d.getMonth() + 1 };
     });
   };
+  // Week view: the arrows move the selected day by a week and load that day's month.
+  const changeWeek = (delta: number) => {
+    const d = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() + 7 * delta);
+    setSelected(d);
+    if (d.getFullYear() !== view.year || d.getMonth() + 1 !== view.month) {
+      setTours(null);
+      setView({ year: d.getFullYear(), month: d.getMonth() + 1 });
+    }
+  };
+  const pickMode = (m: 'week' | 'month') => {
+    // A week must belong to the loaded month, so jump to its first day if the selection is elsewhere.
+    if (m === 'week' && (selected.getFullYear() !== view.year || selected.getMonth() + 1 !== view.month))
+      setSelected(new Date(view.year, view.month - 1, 1));
+    setMode(m);
+  };
 
   const first = new Date(view.year, view.month - 1, 1);
   const daysInMonth = new Date(view.year, view.month, 0).getDate();
-  const cells: (Date | null)[] = [
-    ...Array<null>(first.getDay()).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => new Date(view.year, view.month - 1, i + 1)),
-  ];
-  const tourDays = new Set((tours ?? []).map((t) => new Date(t.startsAt).getDate()));
+  const weekStart = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() - selected.getDay());
+  const cells: (Date | null)[] =
+    mode === 'week'
+      ? Array.from({ length: 7 }, (_, i) => new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i))
+      : [
+          ...Array<null>(first.getDay()).fill(null),
+          ...Array.from({ length: daysInMonth }, (_, i) => new Date(view.year, view.month - 1, i + 1)),
+        ];
+  // shortcut: only the loaded month has tours, so a week that crosses into the next month shows no dots there; load by date range if that matters.
+  const tourDays = new Set((tours ?? []).map((t) => new Date(t.startsAt).toDateString()));
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+  const label =
+    mode === 'week'
+      ? `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${
+          weekEnd.getMonth() === weekStart.getMonth() ? weekEnd.getDate() : weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }`
+      : first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const step = mode === 'week' ? changeWeek : changeMonth;
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const upcoming = (tours ?? []).filter((t) => new Date(t.startsAt) >= startOfToday);
   const onSelectedDay = (tours ?? []).filter((t) => sameDay(new Date(t.startsAt), selected));
@@ -83,6 +112,18 @@ export default function ToursPage() {
     <main className="min-h-dvh bg-card">
       <header className="flex items-center px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3">
         <h1 className="flex-1 text-[33px] font-bold text-ink">Tours</h1>
+        <div role="group" aria-label="Calendar view" className="mr-3 flex overflow-hidden rounded-[9px] border-[1.5px] border-line bg-surface">
+          {(['week', 'month'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => pickMode(m)}
+              aria-pressed={mode === m}
+              className={`px-3 py-[5px] text-[17px] font-bold capitalize ${mode === m ? 'bg-ink text-card' : 'text-ink'}`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
         <button onClick={() => setPickOpen(true)} aria-label="Book a tour">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/add-tour.svg" alt="" width={38} height={38} />
@@ -91,13 +132,13 @@ export default function ToursPage() {
 
       <div className="flex items-center gap-4 px-4 pb-2">
         <h2 className="flex-1 text-xl font-bold text-ink">
-          {first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {label}
         </h2>
-        <button onClick={() => changeMonth(-1)} aria-label="Previous month">
+        <button onClick={() => step(-1)} aria-label={`Previous ${mode}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/left.svg" alt="" width={20} height={20} />
         </button>
-        <button onClick={() => changeMonth(1)} aria-label="Next month">
+        <button onClick={() => step(1)} aria-label={`Next ${mode}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/right.svg" alt="" width={20} height={20} />
         </button>
@@ -117,7 +158,7 @@ export default function ToursPage() {
             const isToday = sameDay(date, today);
             const isSelected = sameDay(date, selected);
             const isAdded = !!addedAt && sameDay(date, addedAt);
-            const hasTour = tourDays.has(date.getDate());
+            const hasTour = tourDays.has(date.toDateString());
             return (
               <button key={i} onClick={() => setSelected(date)} className="flex flex-col items-center gap-[3px] py-1">
                 <span

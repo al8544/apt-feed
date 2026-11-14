@@ -7,7 +7,8 @@ import { Button } from '@/components/AuthUI';
 import { StepHeader, screen } from '@/components/FormUI';
 
 const RESULT: Record<string, string> = {
-  requested: "You don't fit every rule, so we sent the flock a request.",
+  requested: 'Request sent. An admin will answer it.',
+  mismatch: "You don't fit this flock's rules, so you can't send a request.",
   full: 'This flock is full.',
   closed: 'This flock is not taking new people.',
 };
@@ -75,7 +76,7 @@ export default function FlockProfilePage() {
       <div className={`rough rounded-lg px-4 py-3 ${flock.passes ? '[--fill:var(--color-accent-soft)]' : '[--fill:var(--color-surface)]'}`}>
         <p className={`text-[28px] font-bold ${flock.passes ? 'text-accent' : 'text-ink'}`}>{flock.matchPct}% match</p>
         <p className="text-[17px] text-ink">
-          {flock.passes ? 'You fit every rule, so you can join right away.' : "You don't fit every rule. Joining sends the flock a request."}
+          {flock.passes ? 'You fit every rule. Send a request to join.' : "You don't fit every rule, so you can't send a request."}
         </p>
       </div>
 
@@ -114,8 +115,8 @@ export default function FlockProfilePage() {
         </p>
       )}
       <div className="flex-1" />
-      <Button onClick={join} disabled={busy || !!note}>
-        {busy ? 'Joining…' : flock.passes ? 'Join flock' : 'Ask to join'}
+      <Button onClick={join} disabled={busy || !!note || !flock.passes}>
+        {busy ? 'Sending…' : 'Request to join'}
       </Button>
       <p className="text-center text-[15px] text-muted">You can leave any time</p>
     </main>
