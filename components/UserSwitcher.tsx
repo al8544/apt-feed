@@ -18,7 +18,7 @@ export default function UserSwitcher() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="rough mt-1 flex items-center gap-1.5 rounded-full px-4 py-2 text-[17px] font-bold text-ink"
+        className="rough mt-1 flex items-center gap-1.5 rounded-[9px] px-4 py-2 text-[17px] font-bold text-ink"
       >
         <Users size={16} strokeWidth={1.5} />
         Switch user

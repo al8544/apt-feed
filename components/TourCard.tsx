@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CURRENT_USER_ID, type Tour } from '@/lib/api';
 import { firstName, money } from '@/lib/format';
 import Avatar from './Avatar';
@@ -15,8 +16,8 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
   const d = new Date(tour.startsAt);
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return (
-    <div className="rough flex items-center gap-3.5 rounded-[18px] p-3.5 [--fill:var(--color-surface)]">
-      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl bg-card font-bold">
+    <Link href={`/tours/${tour.id}`} className="rough flex items-center gap-3.5 rounded-[7px] p-3.5 [--fill:var(--color-surface)]">
+      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[5px] bg-card font-bold">
         <span className="text-[13px] leading-tight text-accent">
           {d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
         </span>
@@ -40,6 +41,6 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icons/chevron.svg" alt="" width={20} height={20} />
-    </div>
+    </Link>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Gaegu } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import MotionProvider from "@/components/MotionProvider";
 import "./globals.css";
 
 const gaegu = Gaegu({
@@ -31,8 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <feDisplacementMap in="SourceGraphic" scale="2.5" />
           </filter>
         </svg>
-        <div className="relative mx-auto min-h-dvh max-w-[430px] bg-surface pb-[calc(64px+env(safe-area-inset-bottom))]">
-          {children}
+        <div className="group/app relative mx-auto min-h-dvh max-w-[430px] bg-surface pb-[calc(64px+env(safe-area-inset-bottom))]">
+          <MotionProvider>{children}</MotionProvider>
           {/* usePathname is runtime data on dynamic routes like /map/[id]. */}
           <Suspense fallback={null}>
             <BottomNav />

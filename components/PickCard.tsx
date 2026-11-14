@@ -1,11 +1,12 @@
+import Link from 'next/link';
 import { CURRENT_USER_ID, type GroupListing } from '@/lib/api';
 import { money, specs } from '@/lib/format';
 import Avatar from './Avatar';
 import Icon from './Icon';
 import ListingPhoto from './ListingPhoto';
 
-// Figma "Pick Card": a listing someone in your flock swiped right on.
-// Faces = who liked it; pill = share of flock that swiped right. Calendar = plan a tour, bookmark = stash.
+// Figma "Pick Card": a listing someone in your flock liked.
+// Faces = who liked it; pill = share of flock that liked it. Calendar = plan a tour, bookmark = stash.
 export default function PickCard({
   listing,
   badge,
@@ -22,12 +23,14 @@ export default function PickCard({
   onStash: () => void;
 }) {
   return (
-    <article className="rough flex w-full flex-col rounded-[20px]">
-      <ListingPhoto listing={listing} className="h-[200px] w-full rounded-t-[20px]">
-        {badge && (
-          <span className="rough absolute top-3 left-3 rounded-full px-2.5 py-1 text-sm font-bold text-accent">{badge}</span>
-        )}
-      </ListingPhoto>
+    <article className="rough flex w-full flex-col rounded-lg">
+      <Link href={`/listing/${listing.id}`} aria-label={`${listing.address} details`}>
+        <ListingPhoto listing={listing} className="h-[200px] w-full rounded-t-lg">
+          {badge && (
+            <span className="rough absolute top-3 left-3 rounded-md px-2.5 py-1 text-sm font-bold text-accent">{badge}</span>
+          )}
+        </ListingPhoto>
+      </Link>
       <div className="flex flex-col gap-0.5 px-3.5 pt-3 pb-3.5">
         <div className="flex items-center gap-2">
           <p className="flex-1 text-2xl font-bold text-ink">{money(listing.price)}/mo</p>
@@ -57,7 +60,7 @@ export default function PickCard({
             ))}
           </div>
           <p className="min-w-0 flex-1 truncate text-[15px] text-muted">{likedByText(listing)}</p>
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-[9px] py-[3px] text-[15px] font-bold text-accent">
+          <span className="flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-[9px] py-[3px] text-[15px] font-bold text-accent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/heart.svg" alt="" width={13} height={13} />
             {listing.likes}/{groupSize}

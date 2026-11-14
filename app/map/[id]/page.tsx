@@ -30,6 +30,7 @@ export default function MapListingPage() {
       key={nearby ? `loaded-${id}` : 'loading'}
       listings={nearby}
       loadError={error}
+      settings
       header={(swiped) => (
         <>
           <Link href="/map" className="flex items-center gap-1.5 text-[22px] font-bold">

@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Icon, { type IconName } from './Icon';
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
-  { href: '/', label: 'Flock picks', icon: 'nest', match: (p) => p === '/' },
+  { href: '/picks', label: 'Flock picks', icon: 'nest', match: (p) => p.startsWith('/picks') || p.startsWith('/listing') },
   { href: '/reels', label: 'For you', icon: 'feather', match: (p) => p.startsWith('/reels') },
   { href: '/map', label: 'Map', icon: 'migration', match: (p) => p.startsWith('/map') },
   { href: '/tours', label: 'Calendar', icon: 'calendarTab', match: (p) => p.startsWith('/tours') },
@@ -12,7 +12,7 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
     href: '/group',
     label: 'Flock',
     icon: 'flock',
-    match: (p) => p.startsWith('/group') || p.startsWith('/account') || p.startsWith('/compare'),
+    match: (p) => p.startsWith('/group') || p.startsWith('/stash') || p.startsWith('/members') || p.startsWith('/invite') || p.startsWith('/account') || p.startsWith('/compare'),
   },
 ];
 
@@ -22,7 +22,7 @@ export default function BottomNav() {
   return (
     <nav
       className={`rough fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 pb-[env(safe-area-inset-bottom)] ${
-        dark ? '[--fill:var(--color-ink)]' : '[--fill:var(--color-bar)]'
+        dark ? '[--fill:var(--color-ink)] group-has-[[data-light]]/app:[--fill:var(--color-bar)]' : '[--fill:var(--color-bar)]'
       }`}
     >
       <ul className="flex h-16 items-start pt-2">
@@ -34,7 +34,7 @@ export default function BottomNav() {
                 href={href}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center gap-1 ${active ? (dark ? 'text-card' : 'text-ink') : 'text-faded'}`}
+                className={`flex flex-col items-center gap-1 ${active ? (dark ? 'text-card group-has-[[data-light]]/app:text-ink' : 'text-ink') : 'text-faded'}`}
               >
                 <Icon name={icon} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}

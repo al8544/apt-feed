@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { createTour, getGroupMembers, getTours, type Listing, type Member, type Tour } from '@/lib/api';
+import { createTour, rescheduleTour, getGroupMembers, getTours, type Listing, type Member, type Tour } from '@/lib/api';
 import { firstName, initials } from '@/lib/format';
 import Sheet from './Sheet';
 
@@ -49,24 +49,34 @@ export default function BookTourSheet({
   listing,
   onClose,
   onBooked,
+  rescheduleId,
 }: {
   listing: Listing | null;
   onClose: () => void;
   onBooked: (tourId: string, startsAt: Date) => void;
+  rescheduleId?: string; // move this existing tour instead of booking a new one
 }) {
   return (
     <Sheet
       open={!!listing}
       onClose={onClose}
-      title="Book a tour"
+      title={rescheduleId ? 'Reschedule tour' : 'Book a tour'}
       subtitle={listing ? `${listing.address} · ${listing.neighborhood}` : ''}
     >
-      {listing && <Slots key={listing.id} listing={listing} onBooked={onBooked} />}
+      {listing && <Slots key={listing.id} listing={listing} onBooked={onBooked} rescheduleId={rescheduleId} />}
     </Sheet>
   );
 }
 
-function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: string, startsAt: Date) => void }) {
+function Slots({
+  listing,
+  onBooked,
+  rescheduleId,
+}: {
+  listing: Listing;
+  onBooked: (tourId: string, startsAt: Date) => void;
+  rescheduleId?: string;
+}) {
   const slots = useMemo(() => openSlots(listing.id), [listing.id]);
   const [agentName, agency] = AGENTS[hash(listing.id) % AGENTS.length]!;
   const [members, setMembers] = useState<Member[]>([]);
@@ -80,9 +90,9 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
     // Slots can spill into next month.
     const months = new Set(slots.map((s) => `${s.start.getFullYear()}-${s.start.getMonth() + 1}`));
     Promise.all([...months].map((k) => getTours(+k.split('-')[0]!, +k.split('-')[1]!)))
-      .then((r) => setTours(r.flat()))
+      .then((r) => setTours(r.flat().filter((t) => t.id !== rescheduleId)))
       .catch(() => {});
-  }, [slots]);
+  }, [slots, rescheduleId]);
 
   async function add() {
     if (picked == null) return;
@@ -90,7 +100,10 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
     setSaving(true);
     setError(null);
     try {
-      onBooked(await createTour(listing.id, start), start);
+      if (rescheduleId) {
+        await rescheduleTour(rescheduleId, start);
+        onBooked(rescheduleId, start);
+      } else onBooked(await createTour(listing.id, start), start);
     } catch (e) {
       setError((e as Error).message);
       setSaving(false);
@@ -99,7 +112,7 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
 
   return (
     <div className="flex flex-col gap-4 pb-1">
-      <div className="rough flex items-center gap-3 rounded-2xl px-3.5 py-2.5 [--fill:var(--color-surface)]">
+      <div className="rough flex items-center gap-3 rounded-md px-3.5 py-2.5 [--fill:var(--color-surface)]">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tan text-lg font-bold text-ink">
           {initials(agentName)}
         </span>
@@ -107,7 +120,7 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
           <p className="text-lg font-bold text-ink">{agentName}</p>
           <p className="text-[15px] text-muted">Listing agent · {agency}</p>
         </div>
-        <span className="rounded-full bg-card px-2.5 py-[3px] text-sm font-bold text-ink">{slots.length} open</span>
+        <span className="rounded-md bg-card px-2.5 py-[3px] text-sm font-bold text-ink">{slots.length} open</span>
       </div>
 
       <div className="flex items-baseline">
@@ -134,7 +147,7 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
               role="radio"
               aria-checked={selected}
               onClick={() => setPicked(i)}
-              className={`rough flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left ${
+              className={`rough flex items-center gap-3 rounded-md px-3.5 py-3 text-left ${
                 selected ? 'outline-2 -outline-offset-2 outline-ink [--fill:var(--color-card)]' : '[--fill:var(--color-surface)]'
               }`}
             >
@@ -149,7 +162,7 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2.5 py-[3px] text-sm font-bold ${
+                className={`shrink-0 rounded-md px-2.5 py-[3px] text-sm font-bold ${
                   allFree || busy.length === 0 ? 'bg-accent-soft text-accent' : 'bg-card text-muted'
                 }`}
               >
@@ -164,9 +177,9 @@ function Slots({ listing, onBooked }: { listing: Listing; onBooked: (tourId: str
       <button
         onClick={add}
         disabled={picked == null || saving}
-        className="rough h-[52px] w-full shrink-0 rounded-full text-xl font-bold text-card [--fill:var(--color-ink)] disabled:opacity-35"
+        className="rough h-[52px] w-full shrink-0 rounded-[10px] text-xl font-bold text-card [--fill:var(--color-ink)] disabled:opacity-35"
       >
-        {saving ? 'Adding…' : picked == null ? 'Pick a time' : 'Add to flock calendar'}
+        {saving ? 'Saving…' : picked == null ? 'Pick a time' : rescheduleId ? 'Move tour' : 'Add to flock calendar'}
       </button>
     </div>
   );

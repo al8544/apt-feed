@@ -136,13 +136,15 @@ export async function getGroupFeed(limit = 30): Promise<FeedPost[]> {
 }
 
 // ---------- Reels (swipe deck) ----------
-export async function getSwipeDeck(limit = 20): Promise<GroupListing[]> {
+// review = 'right' | 'left': instead of the unseen listings, the ones you already liked / passed on.
+export async function getSwipeDeck(limit = 20, review?: 'right' | 'left'): Promise<GroupListing[]> {
   const swiped = check(
-    await supabase.from('swipes').select('listing_id').eq('user_id', CURRENT_USER_ID)
-  ) as { listing_id: string }[];
-  let q = supabase.from('listings').select(LISTING_COLS);
-  if (swiped.length) q = q.not('id', 'in', `(${swiped.map((s) => s.listing_id).join(',')})`);
-  const listings = check(await q) as Listing[];
+    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID)
+  ) as { listing_id: string; direction: 'left' | 'right' }[];
+  const dirs = new Map(swiped.map((s) => [s.listing_id, s.direction]));
+  const listings = (check(await supabase.from('listings').select(LISTING_COLS)) as Listing[]).filter((l) =>
+    review ? dirs.get(l.id) === review : !dirs.has(l.id)
+  );
   const decorated = await decorate(listings);
   return decorated.sort((a, b) => b.match.pct - a.match.pct || b.likes - a.likes).slice(0, limit);
 }
@@ -207,6 +209,15 @@ export async function getTours(year: number, month: number /* 1-12 */): Promise<
   }));
 }
 
+export async function getTour(id: string): Promise<Tour | null> {
+  const r = check(
+    await supabase.from('tours')
+      .select(`id, starts_at, listing:listings(${LISTING_COLS}), tour_attendees(user:profiles(*))`)
+      .eq('id', id).maybeSingle()
+  ) as unknown as { id: string; starts_at: string; listing: Listing; tour_attendees: { user: Profile }[] } | null;
+  return r && { id: r.id, startsAt: r.starts_at, listing: r.listing, attendees: r.tour_attendees.map((a) => a.user) };
+}
+
 // Listings the flock has a tour booked for (any date).
 export async function getTouredListingIds(): Promise<Set<string>> {
   const rows = check(
@@ -225,8 +236,26 @@ export async function createTour(listingId: string, startsAt: Date, attendeeIds:
   return tour.id;
 }
 
+// An update or delete that matches no rows (e.g. blocked by row-level security) must not look like success.
+const changed = (rows: unknown[] | null) => {
+  if (!rows?.length) throw new Error('Could not change this tour');
+};
+
+export async function rescheduleTour(tourId: string, startsAt: Date): Promise<void> {
+  changed(check(await supabase.from('tours').update({ starts_at: startsAt.toISOString() }).eq('id', tourId).select('id')) as unknown[]);
+}
+
+export async function cancelTour(tourId: string): Promise<void> {
+  check(await supabase.from('tour_attendees').delete().eq('tour_id', tourId));
+  changed(check(await supabase.from('tours').delete().eq('id', tourId).select('id')) as unknown[]);
+}
+
 export async function joinTour(tourId: string): Promise<void> {
   check(await supabase.from('tour_attendees').upsert({ tour_id: tourId, user_id: CURRENT_USER_ID }));
+}
+
+export async function leaveTour(tourId: string): Promise<void> {
+  check(await supabase.from('tour_attendees').delete().eq('tour_id', tourId).eq('user_id', CURRENT_USER_ID));
 }
 
 // ---------- Account ----------

@@ -1,8 +1,11 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import type { GroupListing } from '@/lib/api';
 import { shortPrice } from '@/lib/format';
+import { flockScore } from '@/lib/compare';
+import Ducktective from './Ducktective';
 import { matchesQuery } from './MapFiltersSheet';
 
 const MAX_HOMES = 4;
@@ -11,16 +14,19 @@ const MAX_PLACES = 5;
 type Option =
   | { kind: 'home'; listing: GroupListing }
   | { kind: 'all'; count: number }
+  | { kind: 'best'; listing: GroupListing }
   | { kind: 'place'; prediction: google.maps.places.PlacePrediction };
 
 // One search bar for both: your listings first, then any place from Google (Places API, New).
 export default function MapSearch({
   listings,
+  groupSize,
   activeQuery,
   onPickListing,
   onShowMatches,
 }: {
   listings: GroupListing[];
+  groupSize: number;
   activeQuery: string; // text currently filtering the pins ('' = none)
   onPickListing: (l: GroupListing) => void;
   onShowMatches: (q: string) => void; // '' clears the filter
@@ -36,6 +42,11 @@ export default function MapSearch({
 
   const q = text.trim();
   const homes = q ? listings.filter((l) => matchesQuery(l, q)) : [];
+  // Ducktect Best Option: the best flock score among the matching homes, or among all homes when none match.
+  const best = (homes.length ? homes : listings).reduce<GroupListing | null>(
+    (b, l) => (!b || flockScore(l, groupSize) > flockScore(b, groupSize) ? l : b),
+    null,
+  );
 
   // Google suggestions, debounced. Biased to what's on screen; US only.
   useEffect(() => {
@@ -67,6 +78,7 @@ export default function MapSearch({
     ...homes.slice(0, MAX_HOMES).map((listing) => ({ kind: 'home' as const, listing })),
     ...(homes.length > 1 ? [{ kind: 'all' as const, count: homes.length }] : []),
     ...(q ? predictions : []).map((prediction) => ({ kind: 'place' as const, prediction })),
+    ...(best ? [{ kind: 'best' as const, listing: best }] : []),
   ];
   const showList = open && !!q;
 
@@ -84,7 +96,7 @@ export default function MapSearch({
 
   async function choose(o: Option) {
     setOpen(false);
-    if (o.kind === 'home') {
+    if (o.kind === 'home' || o.kind === 'best') {
       setText(o.listing.address);
       onShowMatches('');
       onPickListing(o.listing);
@@ -118,7 +130,7 @@ export default function MapSearch({
 
   return (
     <div className="relative min-w-0 flex-1">
-      <div className="rough flex items-center gap-2.5 rounded-[14px] px-3.5 py-3">
+      <div className="rough flex items-center gap-2.5 rounded-md px-3.5 py-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/search.svg" alt="" width={20} height={20} />
         <input
@@ -154,55 +166,71 @@ export default function MapSearch({
         )}
       </div>
 
-      {showList && (
-        <ul
-          id="map-search-list"
-          role="listbox"
-          // Keep focus in the input while tapping an option.
-          onMouseDown={(e) => e.preventDefault()}
-          className="rough absolute inset-x-0 top-full z-20 mt-2 max-h-[60dvh] overflow-y-auto rounded-[14px] py-1"
-        >
-          {options.length === 0 && (
-            <li className="px-3.5 py-2.5 text-base text-muted">{places && !placesError ? 'Searching…' : 'No homes match'}</li>
-          )}
-          {options.map((o, i) => (
-            <li
-              key={o.kind === 'home' ? o.listing.id : o.kind === 'all' ? 'all' : o.prediction.placeId}
-              id={`map-search-${i}`}
-              role="option"
-              aria-selected={i === active}
-              onClick={() => choose(o)}
-              onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 ${i === active ? 'bg-surface' : ''} ${
-                o.kind === 'place' && i > 0 && options[i - 1]!.kind !== 'place' ? 'border-t border-line' : ''
-              }`}
-            >
-              {o.kind === 'home' ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/icons/heart.svg" alt="" width={13} height={13} className={o.listing.likes ? '' : 'opacity-0'} />
-                  <span className="min-w-0 flex-1 truncate text-[17px] text-ink">
-                    {o.listing.address} · <span className="text-muted">{o.listing.neighborhood}</span>
-                  </span>
-                  <span className="shrink-0 text-[15px] font-bold text-accent">{shortPrice(o.listing.price)}</span>
-                </>
-              ) : o.kind === 'all' ? (
-                <span className="text-[17px] font-bold text-accent">Show all {o.count} matching homes</span>
-              ) : (
-                <>
-                  {/* pin.svg is drawn in cream; use it as a mask so it takes the text color */}
-                  <span aria-hidden className="size-3.5 shrink-0 bg-muted [mask:url(/icons/pin.svg)_center/contain_no-repeat]" />
-                  <span className="min-w-0 flex-1 truncate text-[17px] text-ink">
-                    {o.prediction.mainText?.text ?? o.prediction.text.text}{' '}
-                    <span className="text-muted">{o.prediction.secondaryText?.text}</span>
-                  </span>
-                </>
-              )}
-            </li>
-          ))}
-          {predictions.length > 0 && <li className="px-3.5 pt-1 pb-1.5 text-right text-xs text-muted">Places by Google</li>}
-        </ul>
-      )}
+      <AnimatePresence>
+        {showList && (
+          <motion.ul
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            id="map-search-list"
+            role="listbox"
+            // Keep focus in the input while tapping an option.
+            onMouseDown={(e) => e.preventDefault()}
+            className="rough absolute inset-x-0 top-full z-20 mt-2 max-h-[60dvh] overflow-y-auto rounded-md py-1"
+          >
+            {homes.length === 0 && predictions.length === 0 && (
+              <li className="px-3.5 py-2.5 text-base text-muted">{places && !placesError ? 'Searching…' : 'No homes match'}</li>
+            )}
+            {options.map((o, i) => (
+              <Fragment key={o.kind === 'home' ? o.listing.id : o.kind === 'all' || o.kind === 'best' ? o.kind : o.prediction.placeId}>
+                {o.kind === 'best' && predictions.length > 0 && (
+                  <li className="px-3.5 pt-1 pb-2.5 text-right text-xs text-muted">Places by Google</li>
+                )}
+                <li
+                  id={`map-search-${i}`}
+                  role="option"
+                  aria-selected={i === active}
+                  onClick={() => choose(o)}
+                  onMouseEnter={() => setActive(i)}
+                  className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 ${
+                    i === active ? 'bg-surface' : o.kind === 'best' ? 'bg-card' : ''
+                  } ${o.kind === 'best' ? 'sticky bottom-0 rounded-b-md' : ''} ${
+                    (o.kind === 'place' || o.kind === 'best') && i > 0 && options[i - 1]!.kind !== o.kind ? 'border-t border-line' : ''
+                  }`}
+                >
+                  {o.kind === 'home' ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/icons/heart.svg" alt="" width={13} height={13} className={o.listing.likes ? '' : 'opacity-0'} />
+                      <span className="min-w-0 flex-1 truncate text-[17px] text-ink">
+                        {o.listing.address} · <span className="text-muted">{o.listing.neighborhood}</span>
+                      </span>
+                      <span className="shrink-0 text-[15px] font-bold text-accent">{shortPrice(o.listing.price)}</span>
+                    </>
+                  ) : o.kind === 'all' ? (
+                    <span className="text-[17px] font-bold text-accent">Show all {o.count} matching homes</span>
+                  ) : o.kind === 'best' ? (
+                    <>
+                      <Ducktective />
+                      <span className="text-xl font-bold text-ink">Ducktect Best Option</span>
+                    </>
+                  ) : (
+                    <>
+                      {/* pin.svg is drawn in cream; use it as a mask so it takes the text color */}
+                      <span aria-hidden className="size-3.5 shrink-0 bg-muted [mask:url(/icons/pin.svg)_center/contain_no-repeat]" />
+                      <span className="min-w-0 flex-1 truncate text-[17px] text-ink">
+                        {o.prediction.mainText?.text ?? o.prediction.text.text}{' '}
+                        <span className="text-muted">{o.prediction.secondaryText?.text}</span>
+                      </span>
+                    </>
+                  )}
+                </li>
+              </Fragment>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

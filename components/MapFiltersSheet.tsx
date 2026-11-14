@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { GroupListing } from '@/lib/api';
 import { money } from '@/lib/format';
 import Toggle from './Toggle';
@@ -75,9 +76,13 @@ export default function MapFiltersSheet({
   onApply: (f: Filters) => void;
 }) {
   // Portal: the map screen is position:fixed, which would trap this sheet under the bottom nav.
-  return open
-    ? createPortal(<FiltersBody value={value} listings={listings} mine={mine} onClose={onClose} onApply={onApply} />, document.body)
-    : null;
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <AnimatePresence>
+      {open && <FiltersBody value={value} listings={listings} mine={mine} onClose={onClose} onApply={onApply} />}
+    </AnimatePresence>,
+    document.body,
+  );
 }
 
 // Mounted only while open, so the draft starts from the applied filters each time.
@@ -117,12 +122,23 @@ function FiltersBody({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center">
-      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/45" />
-      <div
+      <motion.button
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/45"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0, transition: { type: 'spring', damping: 30, stiffness: 320 } }}
+        exit={{ y: '100%', transition: { duration: 0.2, ease: 'easeIn' } }}
         role="dialog"
         aria-modal="true"
         aria-label="Filters"
-        className="rough absolute bottom-0 flex h-[min(760px,90dvh)] w-full max-w-[430px] flex-col rounded-t-[28px] drop-shadow-[0_-4px_12px_rgba(69,38,13,0.18)]"
+        className="rough absolute bottom-0 flex h-[min(760px,90dvh)] w-full max-w-[430px] flex-col rounded-t-[10px] drop-shadow-[0_-4px_12px_rgba(69,38,13,0.18)]"
       >
         <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2.5 pb-1.5">
           <div className="h-[5px] w-10 rounded-[3px] bg-line" />
@@ -214,12 +230,12 @@ function FiltersBody({
         <div className="shrink-0 px-4 pt-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
           <button
             onClick={() => onApply(draft)}
-            className="rough w-full rounded-2xl py-3.5 text-xl font-bold text-card [--fill:var(--color-ink)]"
+            className="rough w-full rounded-md py-3.5 text-xl font-bold text-card [--fill:var(--color-ink)]"
           >
             Show {count} {count === 1 ? 'home' : 'homes'}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -235,7 +251,7 @@ function Heading({ title, note }: { title: string; note?: string }) {
 
 function PriceBox({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rough flex flex-1 flex-col rounded-[14px] px-3.5 py-2 [--fill:var(--color-surface)]">
+    <div className="rough flex flex-1 flex-col rounded-md px-3.5 py-2 [--fill:var(--color-surface)]">
       <span className="text-sm text-muted">{label}</span>
       <span className="text-[19px] font-bold text-ink">{money(value)}</span>
     </div>
@@ -262,7 +278,7 @@ function Pills({
           role="radio"
           aria-checked={value === v}
           onClick={() => onChange(v)}
-          className={`rough flex-1 rounded-full py-2 text-base font-bold whitespace-nowrap ${
+          className={`rough flex-1 rounded-[9px] py-2 text-base font-bold whitespace-nowrap ${
             value === v ? 'text-card [--fill:var(--color-ink)]' : 'text-ink [--fill:var(--color-surface)]'
           }`}
         >

@@ -5,7 +5,7 @@ import Sheet from './Sheet';
 
 type Prefs = Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio'>;
 
-const field = 'w-full rounded-xl bg-surface px-3 py-2.5 text-[17px] text-ink outline-none focus:ring-2 focus:ring-ink/10';
+const field = 'w-full rounded-[5px] bg-surface px-3 py-2.5 text-[17px] text-ink outline-none focus:ring-2 focus:ring-ink/10';
 
 // Edits the current user's preferences, which feed into every group match score.
 export default function PreferencesSheet({
@@ -100,12 +100,12 @@ function PrefsForm({
         Move-in date
         <input type="date" value={moveIn} onChange={(e) => setMoveIn(e.target.value)} className={field} />
       </label>
-      <label className="flex items-center justify-between rounded-xl bg-surface px-3 py-3 text-[17px] text-ink">
+      <label className="flex items-center justify-between rounded-[5px] bg-surface px-3 py-3 text-[17px] text-ink">
         I have pets
         <input type="checkbox" checked={pets} onChange={(e) => setPets(e.target.checked)} className="size-5 accent-accent" />
       </label>
       {error && <p className="text-[15px] text-danger">{error}</p>}
-      <button disabled={saving} className="mt-1 rough rounded-full py-3 [--fill:var(--color-ink)] text-[17px] font-bold text-card disabled:opacity-50">
+      <button disabled={saving} className="mt-1 rough rounded-[9px] py-3 [--fill:var(--color-ink)] text-[17px] font-bold text-card disabled:opacity-50">
         {saving ? 'Saving…' : 'Save'}
       </button>
     </form>

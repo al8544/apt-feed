@@ -1,4 +1,5 @@
 'use client';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -97,9 +98,9 @@ export default function GroupPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={invite} className="rough flex-1 rounded-lg py-[9px] text-[17px] font-bold text-ink [--fill:var(--color-surface)]">
+          <Link href="/invite" className="rough flex-1 rounded-lg py-[9px] text-center text-[17px] font-bold text-ink [--fill:var(--color-surface)]">
             Invite friends
-          </button>
+          </Link>
           <button
             onClick={() => setPrefsOpen(true)}
             className="rough flex-1 rounded-lg py-[9px] text-[17px] font-bold text-ink [--fill:var(--color-surface)]"
@@ -129,12 +130,12 @@ export default function GroupPage() {
         action={ranked.length > 4 ? (showAll ? 'Show less' : 'See all') : undefined}
         onAction={() => setShowAll((s) => !s)}
       />
-      <p className="px-4 pb-1.5 text-[15px] text-muted">Ranked by everyone&apos;s swipes &amp; flock prefs</p>
+      <p className="px-4 pb-1.5 text-[15px] text-muted">Ranked by everyone&apos;s likes &amp; flock prefs</p>
       {!listings || !members ? (
         [0, 1, 2].map((i) => (
           <div key={i} className="flex animate-pulse items-center gap-3 px-4 py-2">
             <div className="w-[18px]" />
-            <div className="size-[60px] rounded-xl bg-surface" />
+            <div className="size-[60px] rounded-[5px] bg-surface" />
             <div className="flex flex-1 flex-col gap-2">
               <div className="h-3.5 w-28 rounded bg-surface" />
               <div className="h-3 w-44 rounded bg-surface" />
@@ -142,14 +143,21 @@ export default function GroupPage() {
           </div>
         ))
       ) : ranked.length === 0 ? (
-        <p className="rough mx-4 rounded-[18px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
-          No one has swiped right yet. Rankings show up once your flock starts liking places.
+        <p className="rough mx-4 rounded-[7px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
+          No one has liked a place yet. Rankings show up once your flock starts liking places.
         </p>
       ) : (
-        visibleRanked.map(({ l, score }, i) => <RankingRow key={l.id} rank={i + 1} listing={l} score={score} groupSize={size} />)
+        visibleRanked.map(({ l, score }, i) => <RankingRow key={l.id} href={`/listing/${l.id}`} rank={i + 1} listing={l} score={score} groupSize={size} />)
       )}
 
-      <SectionHeader title="Members" />
+      <SectionHeader
+        title="Members"
+        extra={
+          <Link href="/members" className="text-[17px] font-bold text-accent">
+            Manage
+          </Link>
+        }
+      />
       {!members
         ? [0, 1, 2].map((i) => (
             <div key={i} className="flex animate-pulse items-center gap-3 px-4 py-2">
@@ -170,7 +178,7 @@ export default function GroupPage() {
                 </p>
                 <p className="truncate text-lg text-muted">
                   @{m.username}
-                  {m.role === 'admin' && ' · admin'} · {m.swipeCount} {m.swipeCount === 1 ? 'swipe' : 'swipes'}
+                  {m.role === 'admin' && ' · admin'} · {m.swipeCount} {m.swipeCount === 1 ? 'like' : 'likes'}
                 </p>
               </div>
               {m.id !== CURRENT_USER_ID && (
@@ -198,7 +206,7 @@ export default function GroupPage() {
           <SettingsRow label="Pets" value={prefs.pets ? 'Required' : 'Not needed'} onClick={() => setPrefsOpen(true)} />
         </>
       ) : (
-        <div className="mx-4 h-40 animate-pulse rounded-xl bg-surface" />
+        <div className="mx-4 h-40 animate-pulse rounded-[5px] bg-surface" />
       )}
 
       <PreferencesSheet
@@ -214,11 +222,18 @@ export default function GroupPage() {
       />
       <MessageSheet member={chatWith} onClose={() => setChatWith(null)} />
 
-      {toast && (
-        <div className="rough fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }} className="rough fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-[9px] px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

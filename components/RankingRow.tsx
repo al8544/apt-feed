@@ -1,23 +1,35 @@
+import Link from 'next/link';
 import type { GroupListing } from '@/lib/api';
 import { money } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 
-// Figma "Ranking Row". Vote fill = share of the flock that swiped right (track is 64px).
+// Figma "Ranking Row". Vote fill = share of the flock that liked it (track is 64px).
 export default function RankingRow({
   rank,
   listing: l,
   score,
   groupSize,
+  href,
+  photoHref,
 }: {
   rank: React.ReactNode;
   listing: GroupListing;
   score: number;
   groupSize: number;
+  href?: string; // whole row links to the listing
+  photoHref?: string; // only the photo links, for rows that are selectable (compare picker)
 }) {
+  const Row = href ? Link : 'div';
   return (
-    <div className="flex items-center gap-3 px-4 py-2">
+    <Row href={href as string} className="flex items-center gap-3 px-4 py-2">
       {typeof rank === 'number' ? <span className="w-[18px] text-center text-[25px] font-bold text-ink">{rank}</span> : rank}
-      <ListingPhoto listing={l} className="size-[60px] shrink-0 rounded-xl" />
+      {photoHref ? (
+        <Link href={photoHref} aria-label={`${l.address} details`} className="relative z-10 shrink-0">
+          <ListingPhoto listing={l} className="size-[60px] rounded-[5px]" />
+        </Link>
+      ) : (
+        <ListingPhoto listing={l} className="size-[60px] shrink-0 rounded-[5px]" />
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="truncate text-[21px] font-bold text-ink">
           {money(l.price)} · {l.beds} bd
@@ -38,6 +50,6 @@ export default function RankingRow({
         <span className="text-2xl font-bold text-accent">{score}</span>
         <span className="text-[15px] text-muted">score</span>
       </div>
-    </div>
+    </Row>
   );
 }

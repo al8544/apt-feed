@@ -119,7 +119,7 @@ export default function ComparePage() {
             key={label}
             onClick={() => set(!on)}
             aria-pressed={on}
-            className={`rough shrink-0 rounded-full px-3.5 py-1.5 text-base font-bold whitespace-nowrap ${on ? 'text-card [--fill:var(--color-ink)]' : 'text-ink'}`}
+            className={`rough shrink-0 rounded-[9px] px-3.5 py-1.5 text-base font-bold whitespace-nowrap ${on ? 'text-card [--fill:var(--color-ink)]' : 'text-ink'}`}
           >
             {label}
           </button>
@@ -129,11 +129,11 @@ export default function ComparePage() {
       {error && <p className="px-4 pb-2 text-[15px] text-danger">{error}</p>}
 
       {!all ? (
-        <div className="mx-4 h-[500px] animate-pulse rounded-[20px] bg-card" />
+        <div className="mx-4 h-[500px] animate-pulse rounded-lg bg-card" />
       ) : places.length === 0 ? (
-        <div className="rough mx-4 flex flex-col items-center gap-2 rounded-[20px] p-8 text-center">
+        <div className="rough mx-4 flex flex-col items-center gap-2 rounded-lg p-8 text-center">
           <p className="text-xl font-bold text-ink">Nothing to compare yet</p>
-          <Link href={pickHref} className="rough rounded-full px-4 py-2 text-lg font-bold text-card [--fill:var(--color-ink)]">
+          <Link href={pickHref} className="rough rounded-[9px] px-4 py-2 text-lg font-bold text-card [--fill:var(--color-ink)]">
             Pick places
           </Link>
         </div>
@@ -171,15 +171,15 @@ export default function ComparePage() {
           {/* Place columns (scroll sideways) */}
           <div className="no-scrollbar flex min-w-0 flex-1 gap-2.5 overflow-x-auto pr-4">
             {order.map(({ l, score }) => (
-              <div key={l.id} className="rough w-[124px] shrink-0 rounded-[20px]">
-                <ListingPhoto listing={l} className="h-[88px] w-full rounded-t-[20px]">
-                  <span className="rough absolute top-2 left-2 rounded-full px-2 py-[3px] text-[13px] font-bold text-accent">
+              <div key={l.id} className="rough w-[124px] shrink-0 rounded-lg">
+                <ListingPhoto listing={l} className="h-[88px] w-full rounded-t-lg">
+                  <span className="rough absolute top-2 left-2 rounded-md px-2 py-[3px] text-[13px] font-bold text-accent">
                     #{flockRank.indexOf(l.id) + 1}
                   </span>
                   <button
                     onClick={() => remove(l.id)}
                     aria-label={`Remove ${l.address}`}
-                    className="rough absolute top-2 right-2 flex size-[22px] items-center justify-center rounded-full"
+                    className="rough absolute top-2 right-2 flex size-[22px] items-center justify-center rounded-md"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/icons/close-sm.svg" alt="" width={10} height={10} />
@@ -201,9 +201,9 @@ export default function ComparePage() {
             {places.length < 4 && (
               <Link
                 href={pickHref}
-                className="flex h-[167px] w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[20px] border-[1.5px] border-dashed border-[#c9b391]"
+                className="flex h-[167px] w-[124px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-[#c9b391]"
               >
-                <span className="rough flex size-10 items-center justify-center rounded-full">
+                <span className="rough flex size-10 items-center justify-center rounded-[10px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/icons/plus.svg" alt="" width={18} height={18} />
                 </span>
@@ -280,7 +280,7 @@ function Cell({
       break;
   }
   return (
-    <span className={`flex items-center gap-1.5 rounded-full px-[9px] py-0.5 font-bold whitespace-nowrap ${big ? 'text-xl' : 'text-base'} ${tone}`}>
+    <span className={`flex items-center gap-1.5 rounded-[9px] px-[9px] py-0.5 font-bold whitespace-nowrap ${big ? 'text-xl' : 'text-base'} ${tone}`}>
       {content}
     </span>
   );
@@ -309,12 +309,12 @@ function MetricsSheet({
       subtitle={`Pick what to line up · ${on} of ${METRICS.length + 1} on`}
       action={<button onClick={() => onChange(DEFAULT_PREFS)}>Reset</button>}
       footer={
-        <button onClick={onClose} className="rough h-[52px] w-full rounded-full text-xl font-bold text-card [--fill:var(--color-ink)]">
+        <button onClick={onClose} className="rough h-[52px] w-full rounded-[10px] text-xl font-bold text-card [--fill:var(--color-ink)]">
           Done
         </button>
       }
     >
-      <div className="rough rounded-2xl">
+      <div className="rough rounded-md">
         <div className="flex items-center gap-2 border-b border-line px-4 py-2">
           <div className="flex-1">
             <p className="text-lg text-ink">Your score</p>
@@ -404,7 +404,7 @@ function WeightsEditor({
           ))}
         </div>
 
-        <div className="rough rounded-2xl">
+        <div className="rough rounded-md">
           {keys.map((m, i) => {
             const w = draft[m.key] ?? 0;
             const diff = w - even;
@@ -446,7 +446,7 @@ function WeightsEditor({
               {ranking.map(({ l, s }, i) => (
                 <span
                   key={l.id}
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-[15px] whitespace-nowrap ${i === 0 ? 'bg-accent-soft text-accent' : 'bg-card text-ink'}`}
+                  className={`shrink-0 rounded-[9px] px-2.5 py-1 text-[15px] whitespace-nowrap ${i === 0 ? 'bg-accent-soft text-accent' : 'bg-card text-ink'}`}
                 >
                   {i + 1} {l.address.split(' ').slice(1, 2).join(' ') || l.address} {s}
                 </span>
@@ -456,7 +456,7 @@ function WeightsEditor({
         )}
         <button
           onClick={() => onSave(draft)}
-          className="rough mt-1 h-[52px] w-full shrink-0 rounded-full text-xl font-bold text-card [--fill:var(--color-ink)]"
+          className="rough mt-1 h-[52px] w-full shrink-0 rounded-[10px] text-xl font-bold text-card [--fill:var(--color-ink)]"
         >
           Use my weights
         </button>

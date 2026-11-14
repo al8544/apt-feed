@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
-import { animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { getStash, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
 import { money, specs } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
@@ -22,17 +23,22 @@ export default function ListingReel({
   loadError,
   header,
   tag,
+  settings = false,
+  empty,
 }: {
   listings: GroupListing[] | null;
   loadError?: string | null;
   header: (swiped: number) => React.ReactNode;
   tag: (l: GroupListing) => string;
+  settings?: boolean; // gear link to Account; For you leaves it off
+  empty?: React.ReactNode; // end-of-deck screen; replaces "all caught up" and switches to the light theme
 }) {
   // Parents pass a key that changes when `listings` loads, so this starts from the fresh list.
   const [deck, setDeck] = useState<GroupListing[] | null>(listings);
   const [history, setHistory] = useState<GroupListing[]>([]);
   const [stashed, setStashed] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<Direction | null>(null);
   const card = useRef<CardHandle>(null);
 
   useEffect(() => {
@@ -42,10 +48,18 @@ export default function ListingReel({
   }, []);
 
   const [top, next] = deck ?? [];
+  const ended = !!empty && !!deck && !top;
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   function onSwiped(listing: GroupListing, dir: Direction) {
     setDeck((d) => d?.filter((l) => l.id !== listing.id) ?? d);
     setHistory((h) => [...h, listing]);
+    if (empty) setToast(dir);
     swipe(listing.id, dir).catch((e) => {
       setError(e.message);
       setDeck((d) => (d ? [listing, ...d] : d));
@@ -56,6 +70,7 @@ export default function ListingReel({
   function undo() {
     const last = history.at(-1);
     if (!last) return;
+    setToast(null);
     setHistory((h) => h.slice(0, -1));
     setDeck((d) => [last, ...(d ?? [])]);
     undoSwipe(last.id).catch((e) => setError(e.message));
@@ -77,14 +92,19 @@ export default function ListingReel({
   }
 
   return (
-    <main className="fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 overflow-hidden bg-ink text-card">
+    <main
+      data-light={ended || undefined}
+      className={`fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 overflow-hidden ${ended ? 'bg-card text-ink' : 'bg-ink text-card'}`}
+    >
       {!deck ? (
         <div className="absolute inset-0 animate-pulse bg-muted/40" />
       ) : !top ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center">
-          <p className="text-2xl font-bold">You&apos;re all caught up</p>
-          <p className="text-lg opacity-85">No new listings right now. Check back soon.</p>
-        </div>
+        (empty ?? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center">
+            <p className="text-2xl font-bold">You&apos;re all caught up</p>
+            <p className="text-lg opacity-85">No new listings right now. Check back soon.</p>
+          </div>
+        ))
       ) : (
         <>
           {next && <ListingPhoto key={`next-${next.id}`} listing={next} className="absolute inset-0" />}
@@ -94,27 +114,50 @@ export default function ListingReel({
 
       <header className={`absolute inset-x-0 top-0 flex h-11 items-center gap-2 px-4 mt-[max(10px,env(safe-area-inset-top))] ${SHADOW}`}>
         {header(history.length)}
-        <Link href="/account" aria-label="Settings">
-          <Icon name="settings" />
-        </Link>
+        {settings && (
+          <Link href="/account" aria-label="Settings">
+            <Icon name="settings" />
+          </Link>
+        )}
       </header>
 
-      {(error ?? loadError) && (
-        <p className={`absolute inset-x-4 top-28 text-center text-base ${SHADOW}`}>{error ?? loadError}</p>
-      )}
+      {(error ?? loadError) && <p className={`absolute inset-x-4 top-28 text-center text-base ${SHADOW}`}>{error ?? loadError}</p>}
 
-      <div className={`absolute right-3 flex flex-col items-center gap-6 ${ABOVE_NAV} mb-[34px]`}>
-        <Action icon="thumbsUp" label="Yes" onClick={() => card.current?.fling('right')} disabled={!top} />
-        <Action icon="thumbsDown" label="Nope" onClick={() => card.current?.fling('left')} disabled={!top} />
-        <Action
-          icon="saveLg"
-          label={top && stashed.has(top.id) ? 'Stashed' : 'Stash'}
-          pressed={!!top && stashed.has(top.id)}
-          onClick={toggleStash}
-          disabled={!top}
-        />
-        <Action icon="undo" label="Back" onClick={undo} disabled={!history.length} />
-      </div>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            role="status"
+            className="absolute inset-x-0 top-[calc(max(10px,env(safe-area-inset-top))+64px)] flex justify-center"
+          >
+            <div className="rough flex items-center gap-4 rounded-lg px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
+              {toast === 'right' ? 'Added to Flock picks' : 'Skipped · won’t show again'}
+              <button onClick={undo} className="text-accent-soft underline">
+                Undo
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!ended && (
+        <div className={`absolute right-3 flex flex-col items-center gap-6 ${ABOVE_NAV} mb-[34px]`}>
+          <Action icon="thumbsUp" label="Yes" onClick={() => card.current?.fling('right')} disabled={!top} />
+          <Action icon="thumbsDown" label="Nope" onClick={() => card.current?.fling('left')} disabled={!top} />
+          <Action
+            icon="saveLg"
+            label={top && stashed.has(top.id) ? 'Stashed' : 'Stash'}
+            pressed={!!top && stashed.has(top.id)}
+            onClick={toggleStash}
+            disabled={!top}
+          />
+          <Action icon="undo" label="Back" onClick={undo} disabled={!history.length} />
+        </div>
+      )}
     </main>
   );
 }
@@ -160,6 +203,7 @@ function SwipeCard({
   const rotate = useTransform(x, [-240, 240], [-8, 8]);
   const likeOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1]);
   const nopeOpacity = useTransform(x, [-SWIPE_THRESHOLD, -20], [1, 0]);
+  const router = useRouter();
   const [photo, setPhoto] = useState(0);
   const leaving = useRef(false);
   const el = useRef<HTMLDivElement>(null);
@@ -168,7 +212,9 @@ function SwipeCard({
   function fling(dir: Direction) {
     if (leaving.current) return;
     leaving.current = true;
-    animate(x, dir === 'right' ? 600 : -600, { duration: 0.28, ease: 'easeIn' }).then(() => onSwiped(dir));
+    if (el.current) el.current.style.pointerEvents = 'none'; // a flying card can't be tapped open
+    // One continuous ease-in: it starts slowly enough that the YES / NOPE stamp is visible, then speeds off.
+    animate(x, dir === 'right' ? 600 : -600, { duration: 0.45, ease: 'easeIn' }).then(() => onSwiped(dir));
   }
   useImperativeHandle(ref, () => ({ fling }));
 
@@ -186,9 +232,12 @@ function SwipeCard({
       ref={el}
       onTap={(_, info) => {
         const rect = el.current?.getBoundingClientRect();
-        if (!rect || photoCount < 2) return;
-        const leftHalf = info.point.x - rect.left < rect.width / 2;
-        setPhoto((p) => (leftHalf ? Math.max(0, p - 1) : Math.min(photoCount - 1, p + 1)));
+        // Not while the card is flying off or springing back: only a still card opens the listing.
+        if (!rect || leaving.current || x.isAnimating() || x.get() !== 0) return;
+        // Outer thirds flip photos; the middle opens the full listing.
+        const at = (info.point.x - rect.left) / rect.width;
+        if (photoCount < 2 || (at > 1 / 3 && at < 2 / 3)) return router.push(`/listing/${listing.id}`);
+        setPhoto((p) => (at < 0.5 ? Math.max(0, p - 1) : Math.min(photoCount - 1, p + 1)));
       }}
       style={{ x, rotate }}
       className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
@@ -205,21 +254,19 @@ function SwipeCard({
 
         <motion.span
           style={{ opacity: likeOpacity }}
-          className="absolute top-40 left-6 -rotate-12 rounded-xl border-[3px] border-accent-soft px-2 text-3xl font-bold text-accent-soft"
+          className="absolute top-40 left-6 -rotate-12 rounded-[5px] border-[3px] border-accent-soft px-2 text-3xl font-bold text-accent-soft"
         >
           YES
         </motion.span>
         <motion.span
           style={{ opacity: nopeOpacity }}
-          className="absolute top-40 right-6 rotate-12 rounded-xl border-[3px] border-card px-2 text-3xl font-bold text-card"
+          className="absolute top-40 right-6 rotate-12 rounded-[5px] border-[3px] border-card px-2 text-3xl font-bold text-card"
         >
           NOPE
         </motion.span>
 
         <div className={`absolute left-4 flex w-[min(290px,calc(100%-90px))] flex-col items-start gap-1 text-card ${ABOVE_NAV}`}>
-          <span className="rounded-full bg-card/22 px-2.5 py-[3px] text-[15px] font-bold">
-            {tag}
-          </span>
+          <span className="rounded-md bg-card/22 px-2.5 py-[3px] text-[15px] font-bold">{tag}</span>
           <p className="text-4xl font-bold">{money(listing.price)}/mo</p>
           <p className="text-lg">
             {specs(listing)}

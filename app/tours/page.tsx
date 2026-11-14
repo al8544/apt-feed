@@ -1,4 +1,5 @@
 'use client';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getGroupMembers, getMapListings, getTours, type GroupListing, type Tour } from '@/lib/api';
@@ -76,6 +77,7 @@ export default function ToursPage() {
   const tourDays = new Set((tours ?? []).map((t) => new Date(t.startsAt).getDate()));
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const upcoming = (tours ?? []).filter((t) => new Date(t.startsAt) >= startOfToday);
+  const onSelectedDay = (tours ?? []).filter((t) => sameDay(new Date(t.startsAt), selected));
 
   return (
     <main className="min-h-dvh bg-card">
@@ -119,7 +121,7 @@ export default function ToursPage() {
             return (
               <button key={i} onClick={() => setSelected(date)} className="flex flex-col items-center gap-[3px] py-1">
                 <span
-                  className={`flex size-9 items-center justify-center rounded-full text-[19px] ${
+                  className={`flex size-9 items-center justify-center rounded-[9px] text-[19px] ${
                     isAdded
                       ? 'border-2 border-accent bg-accent-soft text-accent'
                       : isSelected
@@ -140,6 +142,24 @@ export default function ToursPage() {
 
       <div className="h-[0.5px] bg-line" />
 
+      {onSelectedDay.length > 0 && (
+        <>
+          <div className="flex items-baseline gap-2 px-4 pt-4 pb-2.5">
+            <h2 className="text-xl font-bold text-ink">
+              {selected.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </h2>
+            <span className="text-[15px] text-muted">
+              {onSelectedDay.length} {onSelectedDay.length === 1 ? 'tour' : 'tours'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2.5 px-4">
+            {onSelectedDay.map((t) => (
+              <TourCard key={t.id} tour={t} groupSize={groupSize} />
+            ))}
+          </div>
+        </>
+      )}
+
       <div className="flex items-baseline gap-2 px-4 pt-4 pb-2.5">
         <h2 className="text-xl font-bold text-ink">Upcoming</h2>
         {tours && (
@@ -152,11 +172,11 @@ export default function ToursPage() {
       <div className="flex flex-col gap-2.5 px-4 pb-6">
         {error && <p className="text-[15px] text-danger">{error}</p>}
         {!tours ? (
-          [0, 1, 2].map((i) => <div key={i} className="h-[94px] animate-pulse rounded-[18px] bg-surface" />)
+          [0, 1, 2].map((i) => <div key={i} className="h-[94px] animate-pulse rounded-[7px] bg-surface" />)
         ) : upcoming.length ? (
           upcoming.map((t) => <TourCard key={t.id} tour={t} groupSize={groupSize} />)
         ) : (
-          <p className="rough rounded-[18px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
+          <p className="rough rounded-[7px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
             No tours booked this month. Tap + to book one.
           </p>
         )}
@@ -178,14 +198,21 @@ export default function ToursPage() {
         }}
       />
 
-      {toast && (
-        <div
-          role="status"
-          className="rough fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full px-[18px] py-2.5 text-base font-bold whitespace-nowrap text-card [--fill:var(--color-ink)]"
-        >
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
+            role="status"
+            className="rough fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-[9px] px-[18px] py-2.5 text-base font-bold whitespace-nowrap text-card [--fill:var(--color-ink)]"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
@@ -207,12 +234,12 @@ function PickListingSheet({ open, onClose, onPick }: { open: boolean; onClose: (
       <div className="flex flex-col gap-2 pb-1">
         {error && <p className="text-[15px] text-danger">{error}</p>}
         {!listings
-          ? [0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-surface" />)
+          ? [0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-md bg-surface" />)
           : listings.map((l) => (
               <button
                 key={l.id}
                 onClick={() => onPick(l)}
-                className="rough flex items-center gap-2 rounded-2xl px-3.5 py-3 text-left [--fill:var(--color-surface)]"
+                className="rough flex items-center gap-2 rounded-md px-3.5 py-3 text-left [--fill:var(--color-surface)]"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-bold text-ink">{l.address}</p>
@@ -221,7 +248,7 @@ function PickListingSheet({ open, onClose, onPick }: { open: boolean; onClose: (
                   </p>
                 </div>
                 {l.likes > 0 && (
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-[9px] py-[3px] text-[15px] font-bold text-accent">
+                  <span className="flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-[9px] py-[3px] text-[15px] font-bold text-accent">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/icons/heart.svg" alt="" width={13} height={13} />
                     {l.likes}

@@ -59,8 +59,8 @@ useEffect(() => {
       <div className="flex flex-1 flex-col gap-1.5 pb-3">
         {!messages ? (
           <div className="flex flex-col gap-2">
-            <div className="h-9 w-40 animate-pulse rounded-2xl bg-surface" />
-            <div className="h-9 w-52 animate-pulse self-end rounded-2xl bg-surface" />
+            <div className="h-9 w-40 animate-pulse rounded-md bg-surface" />
+            <div className="h-9 w-52 animate-pulse self-end rounded-md bg-surface" />
           </div>
         ) : messages.length === 0 ? (
           <p className="py-10 text-center text-[15px] text-muted">Say hi to {member.display_name.split(' ')[0]} 👋</p>
@@ -68,7 +68,7 @@ useEffect(() => {
           messages.map((m) => (
             <p
               key={m.id}
-              className={`max-w-[75%] rounded-2xl px-3 py-2 text-[17px] ${
+              className={`max-w-[75%] rounded-md px-3 py-2 text-[17px] ${
                 m.sender_id === CURRENT_USER_ID ? 'self-end bg-ink text-card' : 'self-start bg-surface text-ink'
               }`}
             >
@@ -84,12 +84,12 @@ useEffect(() => {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Message…"
-          className="flex-1 rounded-full bg-surface px-4 py-2.5 text-[17px] outline-none"
+          className="flex-1 rounded-[9px] bg-surface px-4 py-2.5 text-[17px] outline-none"
         />
         <button
           disabled={!draft.trim()}
           aria-label="Send"
-          className="flex size-10 items-center justify-center rounded-full bg-accent text-card disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-[10px] bg-accent text-card disabled:opacity-40"
         >
           <ArrowUp size={18} strokeWidth={2.5} />
         </button>

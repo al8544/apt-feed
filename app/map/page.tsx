@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { CURRENT_USER_ID, getMapListings, getMySwipes, getStash, type GroupListing } from '@/lib/api';
+import { CURRENT_USER_ID, getGroupMembers, getMapListings, getMySwipes, getStash, type GroupListing } from '@/lib/api';
 import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
 import Icon from '@/components/Icon';
@@ -26,6 +27,7 @@ export default function MapPage() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [groupSize, setGroupSize] = useState(0);
   const [me, setMe] = useState<LatLng | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +35,7 @@ export default function MapPage() {
     getMapListings()
       .then(setAll)
       .catch((e) => (setError(e.message), setAll([])));
+    getGroupMembers().then((m) => setGroupSize(m.length)).catch(() => {});
     getMySwipes().then(setSwipes).catch(() => {});
     getStash().then((ls) => setStashed(new Set(ls.map((l) => l.id)))).catch(() => {});
   }, []);
@@ -80,6 +83,7 @@ export default function MapPage() {
           <div className="pointer-events-auto flex gap-2.5 px-4">
             <MapSearch
               listings={all ?? []}
+              groupSize={groupSize}
               activeQuery={filters.query}
               onPickListing={(l) => setSelectedId(l.id)}
               onShowMatches={(query) => setFilters((f) => ({ ...f, query }))}
@@ -87,7 +91,7 @@ export default function MapPage() {
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="Filters"
-              className="rough flex size-[46px] items-center justify-center rounded-[14px] text-ink"
+              className="rough flex size-[46px] items-center justify-center rounded-md text-ink"
             >
               <Icon name="settings" scale={20 / 24} />
             </button>
@@ -98,7 +102,7 @@ export default function MapPage() {
                 key={c.label}
                 onClick={() => setFilters((f) => ({ ...f, ...c.toggle(f) }))}
                 aria-pressed={c.on(filters)}
-                className={`rough shrink-0 rounded-full px-3.5 py-2 text-[15px] font-bold whitespace-nowrap ${
+                className={`rough shrink-0 rounded-[9px] px-3.5 py-2 text-[15px] font-bold whitespace-nowrap ${
                   c.on(filters) ? 'text-card [--fill:var(--color-ink)]' : 'text-ink'
                 }`}
               >
@@ -107,12 +111,12 @@ export default function MapPage() {
             ))}
           </div>
           {(!all || error) && (
-            <div className="rough self-center rounded-full px-3 py-1.5 text-[15px]">
+            <div className="rough self-center rounded-[9px] px-3 py-1.5 text-[15px]">
               {error ? <span className="text-danger">{error}</span> : <span className="animate-pulse text-muted">Loading homes…</span>}
             </div>
           )}
           {all && !error && listings.length === 0 && (
-            <div className="rough self-center rounded-full px-3 py-1.5 text-[15px] text-muted">
+            <div className="rough self-center rounded-[9px] px-3 py-1.5 text-[15px] text-muted">
               {filters.query ? `No homes match “${filters.query}”` : 'No homes match these filters'}
             </div>
           )}
@@ -120,7 +124,20 @@ export default function MapPage() {
 
         <div className="absolute inset-x-4 bottom-[calc(80px+env(safe-area-inset-bottom))] flex flex-col items-end gap-3">
           <LocateButton onLocated={setMe} />
-          {selected && <ListingCard listing={selected} className="w-full" />}
+          <AnimatePresence mode="wait">
+            {selected && (
+              <motion.div
+                key={selected.id}
+                className="w-full"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 24 }}
+                transition={{ duration: 0.18 }}
+              >
+                <ListingCard listing={selected} className="w-full" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <MapFiltersSheet
