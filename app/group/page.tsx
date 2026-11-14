@@ -68,7 +68,7 @@ export default function GroupPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/down.svg" alt="" width={18} height={18} />
         <div className="flex-1" />
-        <Link href="/account" aria-label="My account" className="rounded-full">
+        <Link href="/account" aria-label="My account" className="rounded-full border-2 border-line">
           {me ? <Avatar user={me} size={30} /> : <div className="size-[30px] animate-pulse rounded-full bg-surface" />}
         </Link>
       </header>

@@ -33,7 +33,7 @@ export default function Avatar({
       role="img"
       aria-label={user.display_name}
       style={{ ...style, fontSize: Math.round(size / 3) }}
-      className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-cream ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-card ${className}`}
     >
       {initials(user.display_name)}
     </div>

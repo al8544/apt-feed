@@ -24,8 +24,6 @@
 body {
   background: var(--color-surface);
   color: var(--color-ink);
-  /* Gaegu has a small x-height; match it to a regular UI font so sizes read as designed. */
-  font-size-adjust: 0.52;
 }
 
 .no-scrollbar {
