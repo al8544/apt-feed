@@ -1,7 +1,7 @@
 // Display helpers shared by screens. Pure formatting only — data comes from lib/api.ts.
 import type { Listing, Profile } from './api';
 
-export const GROUP_NAME = 'Brooklyn Crew';
+export const GROUP_NAME = 'Brooklyn Flock';
 
 export const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 

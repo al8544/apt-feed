@@ -1,15 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { Search, SlidersHorizontal, Navigation } from 'lucide-react';
+import { Search, Navigation } from 'lucide-react';
 import { getMapListings, type GroupListing, type MapFilters } from '@/lib/api';
 import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
+import DrawnIcon from '@/components/DrawnIcon';
 
 const CENTER = { lat: 40.712, lng: -73.955 };
 
 const CHIPS: { label: string; filter: MapFilters }[] = [
-  { label: 'Liked by group', filter: { likedByGroup: true } },
+  { label: 'Liked by flock', filter: { likedByGroup: true } },
   { label: 'Under $3.5k', filter: { maxPrice: 3500 } },
   { label: '2+ beds', filter: { minBeds: 2 } },
   { label: 'Pets OK', filter: { pets: true } },
@@ -48,7 +49,7 @@ export default function MapPage() {
 
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
-      <main className="fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-[#eef0ea]">
+      <main className="fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-[#efe9da]">
         <Map
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID}
           defaultCenter={CENTER}
@@ -72,12 +73,12 @@ export default function MapPage() {
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-2.5 pt-[max(12px,env(safe-area-inset-top))]">
           <div className="pointer-events-auto flex gap-2.5 px-4">
-            <div className="flex flex-1 items-center gap-2.5 rounded-[14px] bg-white px-3.5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-              <Search size={20} className="text-muted" />
-              <span className="text-base font-medium text-ink">Brooklyn, NY</span>
+            <div className="rough rough-cream flex flex-1 items-center gap-2.5 rounded-[14px] px-3.5 py-2.5">
+              <Search size={20} strokeWidth={1.5} className="text-muted" />
+              <span className="text-[18px] text-ink">Brooklyn, NY</span>
             </div>
-            <div className="flex size-[46px] items-center justify-center rounded-[14px] bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-              <SlidersHorizontal size={20} />
+            <div className="rough rough-cream flex size-[46px] items-center justify-center rounded-[14px] text-ink">
+              <DrawnIcon name="settings" size={22} />
             </div>
           </div>
           <div className="no-scrollbar pointer-events-auto flex gap-2 overflow-x-auto px-4 pb-2">
@@ -86,8 +87,8 @@ export default function MapPage() {
                 key={c.label}
                 onClick={() => toggle(i)}
                 aria-pressed={active.has(i)}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap shadow-[0_2px_8px_rgba(0,0,0,0.1)] ${
-                  active.has(i) ? 'bg-black text-white' : 'bg-white text-ink'
+                className={`rough shrink-0 rounded-full px-3.5 py-1.5 text-[15px] font-bold whitespace-nowrap ${
+                  active.has(i) ? 'rough-ink text-cream' : 'rough-cream text-ink'
                 }`}
               >
                 {c.label}
@@ -95,12 +96,12 @@ export default function MapPage() {
             ))}
           </div>
           {(loading || error) && (
-            <div className="self-center rounded-full bg-white px-3 py-1.5 text-xs font-medium shadow">
+            <div className="rough rough-cream self-center rounded-full px-3 py-1 text-[14px]">
               {error ? <span className="text-danger">{error}</span> : <span className="animate-pulse text-muted">Loading listings…</span>}
             </div>
           )}
           {!loading && !error && listings.length === 0 && (
-            <div className="self-center rounded-full bg-white px-3 py-1.5 text-xs font-medium text-muted shadow">
+            <div className="rough rough-cream self-center rounded-full px-3 py-1 text-[14px] text-muted">
               No listings match these filters
             </div>
           )}
@@ -129,7 +130,7 @@ function LocateButton() {
     <button
       onClick={locate}
       aria-label="Center map on my location"
-      className="flex size-11 items-center justify-center rounded-full bg-white text-[#3b82f6] shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+      className="rough rough-cream flex size-11 items-center justify-center rounded-full text-accent"
     >
       <Navigation size={18} fill="currentColor" />
     </button>

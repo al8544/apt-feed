@@ -1,23 +1,37 @@
 @import "tailwindcss";
 
-/* Design tokens — exact values from the ApartmentHunt Figma file. */
+/* Design tokens — Flock duck palette from the ApartmentHunt Figma file. */
 @theme {
-  --color-accent: #ff3b5c;
-  --color-ink: #0a0a0a;
-  --color-muted: #737373;
-  --color-surface: #f4f4f6;
-  --color-line: #e6e6e9;
-  --color-danger: #e5484d;
-  --color-match: #34c759;
+  /* palette */
+  --color-tan: #c7a46e;
+  --color-moss: #4c5e40;
+  --color-sage: #668b61;
+  --color-bark: #51382d;
+  --color-walnut: #45270e;
+
+  /* semantic */
+  --color-cream: #fbf6ec;      /* bg/primary */
+  --color-surface: #f1e7d6;    /* bg/secondary */
+  --color-bar: #e6d5b8;        /* bg/bar */
+  --color-ink: #45270e;        /* text/primary */
+  --color-muted: #7a6352;      /* text/secondary */
+  --color-line: #e3d3b8;       /* border */
+  --color-accent: #4c5e40;     /* accent */
+  --color-accent-soft: #dce6d6;
+  --color-icon-off: #a88450;   /* inactive icons */
+  --color-danger: #a4472c;
+  --color-match: #8fb287;
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-gaegu), ui-rounded, system-ui, sans-serif;
 }
 
 body {
   background: var(--color-surface);
   color: var(--color-ink);
+  /* Gaegu has a small x-height; match it to a regular UI font so sizes read as designed. */
+  font-size-adjust: 0.52;
 }
 
 .no-scrollbar {
@@ -27,6 +41,38 @@ body {
   display: none;
 }
 
-.story-ring {
-  background-image: linear-gradient(45deg, #feda75 0%, #ff3b5c 50%, #7c3aed 100%);
+/* Hand-made edges: the fill is drawn on a pseudo-element run through the #rough SVG
+   filter (defined in app/layout.tsx), so text and icons inside stay crisp.
+   In the components layer so utilities like `fixed`/`absolute` still win over `relative`. */
+@layer components {
+  .rough {
+    position: relative;
+    isolation: isolate;
+    background: transparent;
+  }
+  .rough::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--rough-fill, var(--color-cream));
+    filter: url(#rough);
+  }
+  .rough-cream { --rough-fill: var(--color-cream); }
+  .rough-surface { --rough-fill: var(--color-surface); }
+  .rough-bar { --rough-fill: var(--color-bar); }
+  .rough-ink { --rough-fill: var(--color-ink); }
+  .rough-accent { --rough-fill: var(--color-accent); }
+  .rough-soft { --rough-fill: var(--color-accent-soft); }
+}
+
+/* Drawn icons are single-color PNGs used as masks, so they take the text color. */
+.drawn-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }

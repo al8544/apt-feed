@@ -5,7 +5,7 @@ import { CURRENT_USER_ID, getGroupMembers, switchUser, type Member } from '@/lib
 import Avatar from './Avatar';
 import Sheet from './Sheet';
 
-// Demo-only "who are you?" picker: lets two phones act as two different crew members.
+// Demo-only "who are you?" picker: lets two phones act as two different flock members.
 export default function UserSwitcher() {
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -18,15 +18,15 @@ export default function UserSwitcher() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="mt-1 flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink"
+        className="rough rough-cream mt-1 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[15px] font-bold text-ink"
       >
-        <Users size={16} />
+        <Users size={16} strokeWidth={1.5} />
         Switch user
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Who are you?">
         <div className="flex flex-col pb-2">
           {!members ? (
-            <p className="py-6 text-center text-[13px] text-muted">Loading crew…</p>
+            <p className="py-6 text-center text-[13px] text-muted">Loading flock…</p>
           ) : (
             members.map((m) => (
               <button

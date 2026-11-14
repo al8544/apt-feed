@@ -19,11 +19,11 @@ export default function SettingsRow({
   return (
     <Tag
       onClick={onClick}
-      className={`flex w-full items-center gap-2 bg-white px-4 py-3.5 text-left text-[15px] ${divider ? 'border-b-[0.5px] border-line' : ''}`}
+      className={`flex w-full items-center gap-2 px-4 py-3.5 text-left text-[15px] ${divider ? 'border-b-[0.5px] border-line' : ''}`}
     >
       <span className={`shrink-0 ${danger ? 'text-danger' : 'text-ink'}`}>{label}</span>
       <span className="min-w-0 flex-1 truncate text-right text-muted">{value}</span>
-      {chevron && <ChevronRight size={18} className="shrink-0 text-muted" />}
+      {chevron && <ChevronRight size={18} className="shrink-0 text-muted" strokeWidth={1.5} />}
     </Tag>
   );
 }

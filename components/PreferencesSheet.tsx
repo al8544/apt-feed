@@ -105,7 +105,7 @@ function PrefsForm({
         <input type="checkbox" checked={pets} onChange={(e) => setPets(e.target.checked)} className="size-5 accent-accent" />
       </label>
       {error && <p className="text-[13px] text-danger">{error}</p>}
-      <button disabled={saving} className="mt-1 rounded-xl bg-ink py-3 text-[15px] font-semibold text-white disabled:opacity-50">
+      <button disabled={saving} className="mt-1 rounded-xl bg-ink py-3 text-[15px] font-semibold text-cream disabled:opacity-50">
         {saving ? 'Saving…' : 'Save'}
       </button>
     </form>

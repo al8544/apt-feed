@@ -19,7 +19,7 @@ import SettingsRow from '@/components/SettingsRow';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
 
-// Group score: 70% share of the crew that swiped right, 30% how well it fits everyone's prefs.
+// Flock score: 70% share of the flock that swiped right, 30% how well it fits everyone's prefs.
 const score = (l: GroupListing, groupSize: number) =>
   Math.round(70 * (groupSize ? l.likes / groupSize : 0) + 0.3 * l.match.pct);
 
@@ -68,9 +68,9 @@ export default function GroupPage() {
     <main className="pb-4">
       <header className="flex items-center gap-1 px-4 pt-[max(8px,env(safe-area-inset-top))] pb-2">
         <h1 className="text-[22px] font-bold text-ink">{GROUP_NAME}</h1>
-        <ChevronDown size={18} className="text-ink" />
+        <ChevronDown size={18} strokeWidth={1.5} className="text-ink" />
         <div className="flex-1" />
-        <Link href="/account" aria-label="My account" className="rounded-full border-2 border-line">
+        <Link href="/account" aria-label="My account" className="rounded-full">
           {me ? <Avatar user={me} size={30} /> : <div className="size-[30px] animate-pulse rounded-full bg-surface" />}
         </Link>
       </header>
@@ -79,15 +79,15 @@ export default function GroupPage() {
         <div className="flex">
           {!members
             ? [0, 1, 2, 3].map((i) => (
-                <div key={i} className="-mr-3 size-14 animate-pulse rounded-full border-[3px] border-white bg-surface" />
+                <div key={i} className="-mr-3 size-14 animate-pulse rounded-full border-[3px] border-cream bg-surface" />
               ))
-            : members.slice(0, 4).map((m) => <Avatar key={m.id} user={m} size={56} className="-mr-3 border-[3px] border-white" />)}
+            : members.slice(0, 4).map((m) => <Avatar key={m.id} user={m} size={56} className="-mr-3 border-[3px] border-cream" />)}
           <button
             onClick={invite}
             aria-label="Invite friends"
-            className="flex size-14 items-center justify-center rounded-full border-[3px] border-white bg-surface text-ink"
+            className="rough rough-surface flex size-14 items-center justify-center rounded-full text-ink"
           >
-            <Plus size={22} />
+            <Plus size={22} strokeWidth={1.5} />
           </button>
         </div>
         <div className="flex flex-col gap-0.5 text-sm">
@@ -102,11 +102,11 @@ export default function GroupPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={invite} className="flex-1 rounded-lg bg-surface py-[9px] text-sm font-semibold text-ink">
+          <button onClick={invite} className="rough rough-surface flex-1 rounded-lg py-[7px] text-[15px] font-bold text-ink">
             Invite friends
           </button>
-          <button onClick={() => setPrefsOpen(true)} className="flex-1 rounded-lg bg-surface py-[9px] text-sm font-semibold text-ink">
-            Group preferences
+          <button onClick={() => setPrefsOpen(true)} className="rough rough-surface flex-1 rounded-lg py-[7px] text-[15px] font-bold text-ink">
+            Flock preferences
           </button>
         </div>
       </section>
@@ -116,13 +116,13 @@ export default function GroupPage() {
       <SectionHeader
         title={
           <>
-            <Trophy size={18} /> Group rankings
+            <Trophy size={18} strokeWidth={1.5} /> Flock rankings
           </>
         }
         action={ranked.length > 4 ? (showAll ? 'Show less' : 'See all') : undefined}
         onAction={() => setShowAll((s) => !s)}
       />
-      <p className="px-4 pb-1.5 text-[13px] text-muted">Ranked by everyone’s swipes &amp; group prefs</p>
+      <p className="px-4 pb-1.5 text-[13px] text-muted">Ranked by everyone&apos;s swipes &amp; flock prefs</p>
       {!listings || !members ? (
         [0, 1, 2].map((i) => (
           <div key={i} className="flex animate-pulse items-center gap-3 px-4 py-2">
@@ -135,14 +135,14 @@ export default function GroupPage() {
           </div>
         ))
       ) : ranked.length === 0 ? (
-        <p className="mx-4 rounded-[18px] bg-surface p-4 text-center text-[13px] text-muted">
-          No one has swiped right yet. Rankings show up once your crew starts liking places.
+        <p className="rough rough-surface mx-4 rounded-[18px] p-4 text-center text-[14px] text-muted">
+          No one has swiped right yet. Rankings show up once your flock starts liking places.
         </p>
       ) : (
         visibleRanked.map(({ l, score }, i) => (
           <div key={l.id} className="flex items-center gap-3 px-4 py-2">
             <span className="w-[18px] text-center text-lg font-bold text-ink">{i + 1}</span>
-            <ListingPhoto listing={l} className="size-[60px] shrink-0 rounded-xl" />
+            <ListingPhoto listing={l} rough className="size-[60px] shrink-0 rounded-xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <p className="truncate text-[15px] font-semibold text-ink">
                 {money(l.price)} · {l.beds} bd
@@ -192,14 +192,14 @@ export default function GroupPage() {
                 </p>
               </div>
               {m.id !== CURRENT_USER_ID && (
-                <button onClick={() => setChatWith(m)} className="rounded-lg bg-surface px-3.5 py-[7px] text-[13px] font-semibold text-ink">
+                <button onClick={() => setChatWith(m)} className="rough rough-surface rounded-lg px-3.5 py-[5px] text-[15px] font-bold text-ink">
                   Message
                 </button>
               )}
             </div>
           ))}
 
-      <SectionHeader title="Group preferences" action="Edit" onAction={() => setPrefsOpen(true)} />
+      <SectionHeader title="Flock preferences" action="Edit" onAction={() => setPrefsOpen(true)} />
       {prefs ? (
         <>
           <SettingsRow label="Budget" value={budget} onClick={() => setPrefsOpen(true)} />
@@ -230,7 +230,7 @@ export default function GroupPage() {
       <MessageSheet member={chatWith} onClose={() => setChatWith(null)} />
 
       {toast && (
-        <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">
+        <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-cream">
           {toast}
         </div>
       )}

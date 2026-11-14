@@ -69,7 +69,7 @@ useEffect(() => {
             <p
               key={m.id}
               className={`max-w-[75%] rounded-2xl px-3 py-2 text-[15px] ${
-                m.sender_id === CURRENT_USER_ID ? 'self-end bg-ink text-white' : 'self-start bg-surface text-ink'
+                m.sender_id === CURRENT_USER_ID ? 'self-end bg-ink text-cream' : 'self-start bg-surface text-ink'
               }`}
             >
               {m.body}
@@ -79,7 +79,7 @@ useEffect(() => {
         <div ref={bottom} />
       </div>
       {error && <p className="pb-2 text-[13px] text-danger">{error}</p>}
-      <form onSubmit={send} className="sticky bottom-0 flex gap-2 bg-white pt-1">
+      <form onSubmit={send} className="sticky bottom-0 flex gap-2 bg-cream pt-1">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -89,7 +89,7 @@ useEffect(() => {
         <button
           disabled={!draft.trim()}
           aria-label="Send"
-          className="flex size-10 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-full bg-accent text-cream disabled:opacity-40"
         >
           <ArrowUp size={18} strokeWidth={2.5} />
         </button>

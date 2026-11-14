@@ -1,19 +1,21 @@
 'use client';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import Link from 'next/link';
 import { animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
-import { Bookmark, Heart, MapPin, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { MapPin, Undo2 } from 'lucide-react';
 import { getStash, getSwipeDeck, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
 import { money, specs } from '@/lib/format';
 import ListingPhoto from '@/components/ListingPhoto';
+import DrawnIcon, { type DrawnIconName } from '@/components/DrawnIcon';
 
 type Direction = 'left' | 'right';
 type CardHandle = { fling: (dir: Direction) => void };
 
 const SWIPE_THRESHOLD = 120;
+const SHADOW = 'drop-shadow-[0_1px_4px_rgba(0,0,0,0.35)]';
 
-export default function ReelsPage() {
+export default function ForYouPage() {
   const [deck, setDeck] = useState<GroupListing[] | null>(null);
-  const [tab, setTab] = useState<'forYou' | 'group'>('forYou');
   const [history, setHistory] = useState<GroupListing[]>([]);
   const [stashed, setStashed] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -28,8 +30,7 @@ export default function ReelsPage() {
       .catch(() => {});
   }, []);
 
-  const visible = (deck ?? []).filter((l) => tab === 'forYou' || l.likes >= 1);
-  const [top, next] = visible;
+  const [top, next] = deck ?? [];
 
   function onSwiped(listing: GroupListing, dir: Direction) {
     setDeck((d) => d?.filter((l) => l.id !== listing.id) ?? d);
@@ -65,96 +66,82 @@ export default function ReelsPage() {
   }
 
   return (
-    <main className="flex h-[calc(100dvh-64px-env(safe-area-inset-bottom))] flex-col overflow-hidden">
-      <header className="flex h-11 shrink-0 items-center gap-[18px] px-4 mt-[max(8px,env(safe-area-inset-top))]">
-        {(
-          [
-            ['forYou', 'For you'],
-            ['group', 'Group picks'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            aria-pressed={tab === key}
-            className={`text-xl ${tab === key ? 'font-bold text-ink' : 'font-semibold text-muted'}`}
-          >
-            {label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <SlidersHorizontal size={22} className="text-ink" aria-hidden />
+    <main className="fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 overflow-hidden bg-walnut">
+      {!deck ? (
+        <div className="size-full animate-pulse bg-bark" />
+      ) : !top ? (
+        <div className="flex size-full flex-col items-center justify-center gap-2 px-8 text-center text-cream">
+          <p className="text-[22px] font-bold">You&apos;re all caught up</p>
+          <p className="text-[16px] text-cream/75">No new listings right now. Check your flock&apos;s picks.</p>
+          <Link href="/" className="rough rough-cream mt-2 rounded-full px-4 py-2 text-[16px] font-bold text-ink">
+            See flock picks
+          </Link>
+        </div>
+      ) : (
+        <>
+          {next && <ListingPhoto key={`next-${next.id}`} listing={next} className="absolute inset-0" />}
+          <SwipeCard key={top.id} ref={card} listing={top} onSwiped={(dir) => onSwiped(top, dir)} />
+        </>
+      )}
+
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex h-11 items-center px-4 mt-[max(12px,env(safe-area-inset-top))] text-cream">
+        <h1 className={`flex-1 text-[30px] font-bold ${SHADOW}`}>For you</h1>
+        <Link href="/account" aria-label="Settings" className={`pointer-events-auto ${SHADOW}`}>
+          <DrawnIcon name="settings" size={26} />
+        </Link>
       </header>
 
-      <div className="relative mx-3 mt-2.5 min-h-0 flex-1">
-        {!deck ? (
-          <div className="size-full animate-pulse rounded-3xl bg-surface" />
-        ) : !top ? (
-          <div className="flex size-full flex-col items-center justify-center gap-2 rounded-3xl bg-surface px-8 text-center">
-            <p className="text-[17px] font-semibold text-ink">You&apos;re all caught up</p>
-            <p className="text-[13px] text-muted">
-              {tab === 'group' ? 'No group picks left to swipe on. Check "For you".' : 'No new listings right now. Check back soon.'}
-            </p>
-          </div>
-        ) : (
-          <>
-            {next && (
-              <ListingPhoto
-                key={`next-${next.id}`}
-                listing={next}
-                className="absolute inset-x-3 top-3.5 -bottom-3.5 rounded-3xl opacity-50"
-              />
-            )}
-            <SwipeCard key={top.id} ref={card} listing={top} onSwiped={(dir) => onSwiped(top, dir)} />
-          </>
-        )}
-      </div>
+      {error && (
+        <p className="absolute inset-x-4 top-24 rounded-full bg-cream/90 px-3 py-1.5 text-center text-[14px] text-danger">{error}</p>
+      )}
 
-      {error && <p className="px-4 pt-2 text-center text-[13px] text-danger">{error}</p>}
-
-      <div className="flex shrink-0 items-center justify-center gap-5 py-6">
-        <ActionButton small label="Undo" onClick={undo} disabled={!history.length}>
-          <RotateCcw size={18} className="text-muted" />
-        </ActionButton>
-        <ActionButton label="Pass" onClick={() => card.current?.fling('left')} disabled={!top}>
-          <X size={28} className="text-muted" strokeWidth={2} />
-        </ActionButton>
-        <ActionButton label="Like" accent onClick={() => card.current?.fling('right')} disabled={!top}>
-          <Heart size={28} fill="currentColor" strokeWidth={0} className="text-white" />
-        </ActionButton>
-        <ActionButton small label={top && stashed.has(top.id) ? 'Remove from stash' : 'Stash'} onClick={toggleStash} disabled={!top}>
-          <Bookmark size={18} className="text-ink" fill={top && stashed.has(top.id) ? 'currentColor' : 'none'} />
-        </ActionButton>
+      <div className="absolute right-3 bottom-[calc(96px+env(safe-area-inset-bottom))] flex flex-col items-center gap-6">
+        <RailButton icon="thumbsup" label="Yes" onClick={() => card.current?.fling('right')} disabled={!top} />
+        <RailButton icon="thumbsdown" label="Nope" onClick={() => card.current?.fling('left')} disabled={!top} />
+        <RailButton
+          icon="save"
+          label={top && stashed.has(top.id) ? 'Stashed' : 'Stash'}
+          onClick={toggleStash}
+          disabled={!top}
+          active={!!top && stashed.has(top.id)}
+        />
+        <button
+          onClick={undo}
+          disabled={!history.length}
+          aria-label="Back"
+          className={`flex flex-col items-center gap-1 text-cream transition active:scale-90 disabled:opacity-40 ${SHADOW}`}
+        >
+          <Undo2 size={28} strokeWidth={1.75} />
+          <span className="text-[15px] font-bold">Back</span>
+        </button>
       </div>
     </main>
   );
 }
 
-function ActionButton({
+function RailButton({
+  icon,
   label,
   onClick,
   disabled,
-  small,
-  accent,
-  children,
+  active,
 }: {
+  icon: DrawnIconName;
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  small?: boolean;
-  accent?: boolean;
-  children: React.ReactNode;
+  active?: boolean;
 }) {
   return (
     <button
-      aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.14)] transition active:scale-90 disabled:opacity-40 ${
-        small ? 'size-11' : 'size-[66px]'
-      } ${accent ? 'bg-accent' : 'bg-white'}`}
+      aria-label={label}
+      aria-pressed={active}
+      className={`flex flex-col items-center gap-1 transition active:scale-90 disabled:opacity-40 ${active ? 'text-match' : 'text-cream'} ${SHADOW}`}
     >
-      {children}
+      <DrawnIcon name={icon} size={32} />
+      <span className="text-[15px] font-bold">{label}</span>
     </button>
   );
 }
@@ -169,8 +156,8 @@ function SwipeCard({
   ref: Ref<CardHandle>;
 }) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-240, 240], [-12, 12]);
-  const likeOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1]);
+  const rotate = useTransform(x, [-240, 240], [-8, 8]);
+  const yesOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1]);
   const nopeOpacity = useTransform(x, [-SWIPE_THRESHOLD, -20], [1, 0]);
   const [photo, setPhoto] = useState(0);
   const leaving = useRef(false);
@@ -203,41 +190,43 @@ function SwipeCard({
         setPhoto((p) => (leftHalf ? Math.max(0, p - 1) : Math.min(photoCount - 1, p + 1)));
       }}
       style={{ x, rotate }}
-      className="absolute inset-0 cursor-grab touch-pan-y overflow-hidden rounded-3xl shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:cursor-grabbing"
+      className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
     >
       <ListingPhoto listing={listing} index={photo} className="size-full">
-        <div className="absolute inset-x-0 bottom-0 h-[54%] bg-gradient-to-b from-transparent to-black/75" />
+        {/* warm fades keep the cream text readable over any photo */}
+        <div className="absolute inset-x-0 top-0 h-[170px] bg-gradient-to-b from-[#2a1708]/45 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-b from-transparent to-[#2a1708]/80" />
 
-        <div className="absolute inset-x-3 top-3 flex gap-1">
+        <div className="absolute inset-x-4 top-[calc(104px+env(safe-area-inset-top))] flex gap-1">
           {Array.from({ length: photoCount }, (_, i) => (
-            <span key={i} className={`h-[3px] flex-1 rounded-full ${i === photo ? 'bg-white' : 'bg-white/40'}`} />
+            <span key={i} className={`h-[3px] flex-1 rounded-full ${i === photo ? 'bg-cream' : 'bg-cream/40'}`} />
           ))}
         </div>
 
         <motion.span
-          style={{ opacity: likeOpacity }}
-          className="absolute top-10 left-5 -rotate-12 rounded-lg border-[3px] border-match px-2 py-0.5 text-2xl font-extrabold text-match"
+          style={{ opacity: yesOpacity }}
+          className="absolute top-[calc(130px+env(safe-area-inset-top))] left-5 -rotate-12 rounded-lg border-[3px] border-match px-2 py-0.5 text-[28px] font-bold text-match"
         >
-          LIKE
+          YES
         </motion.span>
         <motion.span
           style={{ opacity: nopeOpacity }}
-          className="absolute top-10 right-5 rotate-12 rounded-lg border-[3px] border-accent px-2 py-0.5 text-2xl font-extrabold text-accent"
+          className="absolute top-[calc(130px+env(safe-area-inset-top))] right-5 rotate-12 rounded-lg border-[3px] border-tan px-2 py-0.5 text-[28px] font-bold text-tan"
         >
           NOPE
         </motion.span>
 
-        <div className="absolute inset-x-4 bottom-[18px] flex flex-col items-start gap-1.5 text-white">
-          <span className="rounded-full bg-white/22 px-2.5 py-[5px] text-xs font-semibold backdrop-blur-sm">
-            Matches {listing.match.met} of {listing.match.total} group prefs
+        <div className="absolute bottom-[calc(92px+env(safe-area-inset-bottom))] left-4 flex w-[290px] flex-col items-start gap-1 text-cream">
+          <span className="rounded-full bg-cream/22 px-2.5 py-[3px] text-[15px] font-bold backdrop-blur-sm">
+            Matches {listing.match.met} of {listing.match.total} flock prefs
           </span>
-          <p className="text-[28px] leading-tight font-bold">{money(listing.price)}/mo</p>
-          <p className="text-[15px] font-medium">
+          <p className="text-[36px] leading-tight font-bold">{money(listing.price)}/mo</p>
+          <p className="text-[18px]">
             {specs(listing)}
             {listing.pets && ' · Pets OK'}
           </p>
-          <p className="flex items-center gap-1 text-sm">
-            <MapPin size={15} />
+          <p className="flex items-center gap-1 text-[17px]">
+            <MapPin size={16} strokeWidth={1.5} />
             {listing.address} · {listing.neighborhood}
           </p>
         </div>

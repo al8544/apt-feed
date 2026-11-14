@@ -15,9 +15,9 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
   const d = new Date(tour.startsAt);
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return (
-    <div className="flex items-center gap-3.5 rounded-[18px] bg-surface p-3.5">
-      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl bg-white">
-        <span className="text-[11px] font-semibold text-accent">
+    <div className="rough rough-surface flex items-center gap-3.5 rounded-[18px] p-3.5">
+      <div className="rough rough-cream flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl">
+        <span className="text-[13px] font-bold text-accent">
           {d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
         </span>
         <span className="text-[22px] leading-none font-bold text-ink">{d.getDate()}</span>
@@ -38,7 +38,7 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
           <span className="truncate text-xs font-medium text-muted">{goingLabel(tour, groupSize)}</span>
         </div>
       </div>
-      <ChevronRight size={20} className="shrink-0 text-muted" />
+      <ChevronRight size={20} strokeWidth={1.5} className="shrink-0 text-muted" />
     </div>
   );
 }

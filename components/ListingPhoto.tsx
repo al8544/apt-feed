@@ -15,24 +15,32 @@ export function gradientFor(id: string) {
   return GRADIENTS[Math.abs(h) % GRADIENTS.length]!;
 }
 
+// `rough` gives the photo a hand-made grainy edge; children (badges) sit above it and stay crisp.
 export default function ListingPhoto({
   listing,
   index = 0,
   className = '',
+  rough = false,
   children,
 }: {
   listing: Pick<Listing, 'id' | 'photos' | 'address'>;
   index?: number;
   className?: string;
+  rough?: boolean;
   children?: React.ReactNode;
 }) {
   const src = listing.photos?.[index];
   return (
-    <div className={`relative overflow-hidden ${className}`} style={src ? undefined : { backgroundImage: gradientFor(listing.id) }}>
-      {src && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
-      )}
+    <div className={`relative isolate ${rough ? '' : 'overflow-hidden'} ${className}`}>
+      <div
+        className="absolute inset-0 -z-10 overflow-hidden rounded-[inherit]"
+        style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter: rough ? 'url(#rough)' : undefined }}
+      >
+        {src && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
+        )}
+      </div>
       {children}
     </div>
   );

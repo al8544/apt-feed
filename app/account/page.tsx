@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bookmark, ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { getAccountStats, getProfile, getStash, type Listing, type Profile } from '@/lib/api';
 import { GROUP_NAME, money } from '@/lib/format';
 import Avatar from '@/components/Avatar';
@@ -9,6 +9,7 @@ import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import UserSwitcher from '@/components/UserSwitcher';
+import DrawnIcon from '@/components/DrawnIcon';
 
 type Stats = { swipes: number; stashed: number; tours: number };
 
@@ -31,8 +32,8 @@ export default function AccountPage() {
     <main className="min-h-dvh bg-surface pb-6">
       <nav className="relative flex h-11 items-center justify-center mt-[env(safe-area-inset-top)]">
         <Link href="/group" className="absolute left-2 flex items-center gap-0.5 text-base text-ink">
-          <ChevronLeft size={24} />
-          Group
+          <ChevronLeft size={24} strokeWidth={1.5} />
+          Flock
         </Link>
         <h1 className="text-[17px] font-semibold text-ink">Account</h1>
       </nav>
@@ -47,15 +48,15 @@ export default function AccountPage() {
           </>
         ) : (
           <>
-            <div className="size-[84px] animate-pulse rounded-full bg-white" />
-            <div className="mt-1 h-5 w-32 animate-pulse rounded bg-white" />
-            <div className="h-4 w-24 animate-pulse rounded bg-white" />
+            <div className="size-[84px] animate-pulse rounded-full bg-cream" />
+            <div className="mt-1 h-5 w-32 animate-pulse rounded bg-cream" />
+            <div className="h-4 w-24 animate-pulse rounded bg-cream" />
           </>
         )}
         <button
           onClick={() => setEditOpen(true)}
           disabled={!profile}
-          className="mt-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink"
+          className="rough rough-cream mt-1 rounded-full px-4 py-1.5 text-[15px] font-bold text-ink"
         >
           Edit profile
         </button>
@@ -66,7 +67,7 @@ export default function AccountPage() {
 
       <div className="flex items-center px-4 pt-4 pb-2">
         <h2 className="flex flex-1 items-center gap-1.5 text-[17px] font-semibold text-ink">
-          <Bookmark size={18} fill="currentColor" />
+          <DrawnIcon name="save" size={18} />
           My stash
           {stash && <span className="text-[15px] font-normal text-muted">{stash.length}</span>}
         </h2>
@@ -79,18 +80,18 @@ export default function AccountPage() {
       {!stash ? (
         <div className="flex gap-2.5 overflow-hidden pl-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="size-[108px] shrink-0 animate-pulse rounded-[14px] bg-white" />
+            <div key={i} className="size-[108px] shrink-0 animate-pulse rounded-[14px] bg-cream" />
           ))}
         </div>
       ) : stash.length === 0 ? (
-        <p className="mx-4 rounded-[14px] bg-white p-4 text-center text-[13px] text-muted">
-          Nothing stashed yet. Tap the bookmark on any listing to save it here.
+        <p className="rough rough-cream mx-4 rounded-[14px] p-4 text-center text-[14px] text-muted">
+          Nothing stashed yet. Tap the save icon on any listing to stash it here.
         </p>
       ) : (
         <div className={showAllStash ? 'grid grid-cols-3 gap-2.5 px-4' : 'no-scrollbar flex gap-2.5 overflow-x-auto px-4'}>
           {stash.map((l) => (
             <div key={l.id} className={`flex flex-col gap-1.5 ${showAllStash ? '' : 'w-[108px] shrink-0'}`}>
-              <ListingPhoto listing={l} className="aspect-square w-full rounded-[14px]" />
+              <ListingPhoto listing={l} rough className="aspect-square w-full rounded-[14px]" />
               <div>
                 <p className="text-[13px] font-semibold text-ink">{money(l.price)}/mo</p>
                 <p className="truncate text-xs text-muted">{l.neighborhood}</p>
@@ -102,7 +103,7 @@ export default function AccountPage() {
 
       <Section label="Account">
         <SettingsRow label="Username" value={profile ? `@${profile.username}` : ''} chevron={false} divider />
-        <SettingsRow label="Groups" value={GROUP_NAME} divider />
+        <SettingsRow label="Flocks" value={GROUP_NAME} divider />
         <SettingsRow label="Preferences" value="Budget, beds, pets" onClick={() => setEditOpen(true)} />
       </Section>
 
@@ -113,19 +114,19 @@ export default function AccountPage() {
       </Section>
 
       <Section label="Notifications">
-        <SettingsRow label="Group swipes" value="On" divider />
+        <SettingsRow label="Flock swipes" value="On" divider />
         <SettingsRow label="Tour reminders" value="1 hr before" divider />
         <SettingsRow label="New listings" value="Daily" />
       </Section>
 
       <Section label="Privacy">
-        <SettingsRow label="Who sees my swipes" value="My group" divider />
+        <SettingsRow label="Who sees my swipes" value="My flock" divider />
         <SettingsRow label="Location" value="While using" />
       </Section>
 
       <Section label="Support">
         <SettingsRow label="Help & feedback" divider />
-        <SettingsRow label="Leave group" danger divider />
+        <SettingsRow label="Leave flock" danger divider />
         <SettingsRow label="Log out" danger />
       </Section>
 
@@ -145,7 +146,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   return (
     <section>
       <h3 className="px-8 pt-5 pb-1.5 text-xs font-semibold tracking-[0.48px] text-muted uppercase">{label}</h3>
-      <div className="mx-4 overflow-hidden rounded-[14px] bg-white">{children}</div>
+      <div className="rough rough-cream mx-4 rounded-[14px]">{children}</div>
     </section>
   );
 }

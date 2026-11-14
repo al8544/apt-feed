@@ -64,9 +64,9 @@ export default function ToursPage() {
         <button
           onClick={() => setSheetOpen(true)}
           aria-label="Book a tour"
-          className="flex size-9 items-center justify-center rounded-full bg-black text-white"
+          className="rough rough-ink flex size-9 items-center justify-center rounded-full text-cream"
         >
-          <Plus size={18} strokeWidth={2.5} />
+          <Plus size={18} strokeWidth={2} />
         </button>
       </header>
 
@@ -75,10 +75,10 @@ export default function ToursPage() {
           {first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </h2>
         <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="text-muted">
-          <ChevronLeft size={20} />
+          <ChevronLeft size={20} strokeWidth={1.5} />
         </button>
         <button onClick={() => changeMonth(1)} aria-label="Next month" className="text-ink">
-          <ChevronRight size={20} />
+          <ChevronRight size={20} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -101,7 +101,7 @@ export default function ToursPage() {
                 <span
                   className={`flex size-9 items-center justify-center rounded-full text-base ${
                     isSelected
-                      ? 'bg-black font-semibold text-white'
+                      ? 'rough rough-ink font-bold text-cream'
                       : isToday
                         ? 'font-semibold text-accent'
                         : 'text-ink'
@@ -134,7 +134,7 @@ export default function ToursPage() {
         ) : upcoming.length ? (
           upcoming.map((t) => <TourCard key={t.id} tour={t} groupSize={groupSize} />)
         ) : (
-          <p className="rounded-[18px] bg-surface p-4 text-center text-[13px] text-muted">
+          <p className="rough rough-surface rounded-[18px] p-4 text-center text-[14px] text-muted">
             No tours booked this month. Tap + to book one.
           </p>
         )}
@@ -240,12 +240,12 @@ function BookTourForm({
                 key={l.id}
                 onClick={() => setListingId(l.id)}
                 className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left ${
-                  listingId === l.id ? 'bg-ink text-white' : 'bg-surface text-ink'
+                  listingId === l.id ? 'rough rough-ink text-cream' : 'rough rough-surface text-ink'
                 }`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{l.address}</p>
-                  <p className={`truncate text-[13px] ${listingId === l.id ? 'text-white/70' : 'text-muted'}`}>
+                  <p className={`truncate text-[13px] ${listingId === l.id ? 'text-cream/70' : 'text-muted'}`}>
                     {l.neighborhood} · {money(l.price)}
                   </p>
                 </div>
@@ -257,7 +257,7 @@ function BookTourForm({
       <button
         onClick={book}
         disabled={!listingId || saving}
-        className="sticky bottom-0 w-full rounded-xl bg-ink py-3 text-[15px] font-semibold text-white disabled:opacity-40"
+        className="rough rough-ink sticky bottom-0 w-full rounded-xl py-3 text-[16px] font-bold text-cream disabled:opacity-40"
       >
         {saving ? 'Booking…' : 'Book tour'}
       </button>
