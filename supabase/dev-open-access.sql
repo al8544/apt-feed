@@ -5,7 +5,7 @@
 do $$
 declare t text;
 begin
-  foreach t in array array['profiles','groups','group_members','listings','swipes','stash','tours','tour_attendees','messages']
+  foreach t in array array['profiles','flocks','flock_members','listings','swipes','stash','tours','tour_attendees','messages','proposals','proposal_members','flock_feedback','agent_runs']
   loop
     execute format('drop policy if exists "demo open access" on public.%I', t);
     execute format('create policy "demo open access" on public.%I for all to anon, authenticated using (true) with check (true)', t);

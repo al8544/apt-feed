@@ -58,6 +58,23 @@ real users. Drop it when auth lands (ticket T9); the policies in `0003_rls.sql` 
 The schema file was reconstructed from `lib/api.ts` and the live data, not dumped from the database. Compare it with
 `supabase db dump --schema public` before relying on it.
 
+## Flocks (ticket T6)
+
+Migration `0008_flocks.sql` turns the single hard-coded group into flocks: `flocks` (friends or open, any size from 2 up via
+`max_size`), `flock_members` with a status (invited, requested, active, declined, left), votes scoped to a flock
+(`swipes.flock_id`), the `flock_votes` view, `public_profiles` (discoverable people, no budget or habits), and tables for
+`proposals`, `flock_feedback` and `agent_runs`. `create_flock()` and `join_flock()` are database functions; join takes a row
+lock, so two people can never take the last seat. The API routes `POST /api/flocks` and `POST /api/flocks/[id]/join` call them
+with the caller's access token (`Authorization: Bearer ...`).
+
+```bash
+node scripts/test-flocks.mjs            # integration test against the LOCAL database: races, privacy, rules (needs supabase start)
+node --test lib/flocks.test.ts          # request validation
+```
+
+The app itself still acts as one flock (`GROUP_ID` in `lib/api.ts`, now sent as `flock_id`) and has no sign-in, so nothing in the UI
+calls the new routes yet (ticket T9). The old `groups`, `group_members` and `group_likes` names are gone.
+
 ## CoStar listings (ticket T3)
 
 Real Los Angeles floor plans come from the CoStar kit. Put the zip anywhere and set `COSTAR_KIT_ZIP` and

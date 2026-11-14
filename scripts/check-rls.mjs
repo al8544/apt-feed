@@ -15,7 +15,7 @@ const call = (method, path, body) =>
     body: body && JSON.stringify(body),
   }).then(async (r) => ({ ok: r.ok, status: r.status, data: await r.json().catch(() => null) }));
 
-const PRIVATE = ['profiles', 'groups', 'group_members', 'swipes', 'stash', 'tours', 'tour_attendees', 'messages'];
+const PRIVATE = ['profiles', 'flocks', 'flock_members', 'swipes', 'stash', 'tours', 'tour_attendees', 'messages', 'proposals', 'proposal_members', 'flock_feedback', 'agent_runs'];
 let bad = 0;
 const report = (ok, text) => (console.log(`${ok ? 'ok  ' : 'FAIL'}  ${text}`), ok || bad++);
 
