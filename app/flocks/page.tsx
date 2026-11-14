@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getMyFlocks, getProfile, selectFlock, type FlockSummary, type Profile } from '@/lib/api';
+import { getMyFlocks, getMyProposals, getProfile, selectFlock, type FlockSummary, type Profile, type Proposal } from '@/lib/api';
 import { shortPrice } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/AuthUI';
+import ProposalCard from '@/components/ProposalCard';
 
 // Figma 00d Your flocks: where sign-in lands. Picking a flock sets the one every screen reads.
 export default function YourFlocksPage() {
@@ -14,10 +15,18 @@ export default function YourFlocksPage() {
   const [me, setMe] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+
+  // Also run after answering a proposal: accepting the last one adds a flock to the list.
+  function load() {
     getMyFlocks()
       .then(setFlocks)
       .catch((e) => (setError(e.message), setFlocks([])));
+    getMyProposals().then(setProposals).catch(() => {});
+  }
+
+  useEffect(() => {
+    load();
     getProfile().then(setMe).catch(() => {});
   }, []);
 
@@ -39,6 +48,9 @@ export default function YourFlocksPage() {
       </header>
 
       {error && <p className="text-base text-danger">{error}</p>}
+      {proposals.map((p) => (
+        <ProposalCard key={p.id} proposal={p} onAnswered={load} />
+      ))}
       {!flocks ? (
         [0, 1].map((i) => <div key={i} className="h-[104px] animate-pulse rounded-lg bg-surface" />)
       ) : flocks.length === 0 ? (

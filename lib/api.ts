@@ -138,6 +138,14 @@ export async function discoverFlocks(): Promise<DiscoveredFlock[]> {
   return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch('/api/flocks/discover'))).flocks;
 }
 
+// The agent reads what you wrote and each open flock's text, for the flocks you already pass the rules for. Best fit first.
+// Throws the server's message (no model key, daily limit, model down) so the page can fall back to the rule-based list.
+export type FlockMatch = { flockId: string; fit: 'strong' | 'possible' | 'weak'; reason: string };
+
+export async function getFlockMatches(): Promise<FlockMatch[]> {
+  return (await json<{ matches: FlockMatch[] }>(await authFetch('/api/flocks/match', { method: 'POST' }))).matches;
+}
+
 export async function getFlockProfile(flockId: string): Promise<DiscoveredFlock | null> {
   return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch(`/api/flocks/discover?id=${encodeURIComponent(flockId)}`))).flocks[0] ?? null;
 }
@@ -159,6 +167,31 @@ export async function joinByInvite(flockId: string): Promise<string> {
   return check(await supabase.rpc('join_by_invite', { p_flock_id: flockId })) as string;
 }
 
+// T11: groups the agent proposed that are waiting for my answer (RLS shows only proposals I am in).
+// `accepted`: I said yes and am waiting for the others (the card stays so I can see that).
+export type Proposal = { id: string; name: string; expiresAt: string; accepted: boolean; members: Profile[] };
+
+export async function getMyProposals(): Promise<Proposal[]> {
+  const rows = check(
+    await supabase.from('proposal_members')
+      .select('response, proposal:proposals!inner(id, suggested_name, expires_at, proposal_members(user:profiles(*)))')
+      .eq('user_id', CURRENT_USER_ID).in('response', ['pending', 'accepted']).eq('proposal.status', 'pending')
+  ) as unknown as { response: string; proposal: { id: string; suggested_name: string | null; expires_at: string; proposal_members: { user: Profile }[] } }[];
+  return rows
+    .filter((r) => new Date(r.proposal.expires_at) > new Date())
+    .map(({ response, proposal: p }) => ({
+      id: p.id, name: p.suggested_name ?? 'New flock', expiresAt: p.expires_at, accepted: response === 'accepted', members: p.proposal_members.map((m) => m.user),
+    }));
+}
+
+// Accept or decline. 'waiting' | 'flock_created' | 'declined' | 'expired' | 'closed' | 'already_responded'.
+export async function respondToProposal(proposalId: string, accept: boolean): Promise<string> {
+  const res = await authFetch(`/api/proposals/${proposalId}/respond`, { method: 'POST', body: JSON.stringify({ accept }) });
+  const body = await res.json().catch(() => ({}));
+  if (body.status) return body.status as string; // 409 expired/closed still carries a status
+  throw new Error(body.error ?? `Request failed (${res.status})`);
+}
+
 // ---------- Types ----------
 export type Listing = {
   id: string; address: string;
@@ -175,6 +208,8 @@ export type Profile = {
   id: string; username: string; display_name: string; avatar_color: string; bio: string | null;
   budget_max: number | null; beds_min: number | null; pets: boolean | null;
   neighborhoods: string[] | null; move_in: string | null;
+  // The three long answers on Find a flock (the agent reads them). Optional: only that screen asks for them.
+  about?: string | null; looking_for?: string | null; dealbreakers_text?: string | null;
 };
 
 export type Match = { met: number; total: number; pct: number };
@@ -415,7 +450,7 @@ export async function getProfile(userId = CURRENT_USER_ID): Promise<Profile> {
 }
 
 export async function updatePreferences(
-  prefs: Partial<Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio'>> & { about?: string | null; dealbreakers_text?: string | null }
+  prefs: Partial<Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio' | 'about' | 'looking_for' | 'dealbreakers_text'>>
 ): Promise<void> {
   check(await supabase.from('profiles').update(prefs).eq('id', CURRENT_USER_ID));
 }

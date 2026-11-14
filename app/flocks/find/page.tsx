@@ -1,52 +1,68 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { discoverFlocks, getProfile, updatePreferences, type DiscoveredFlock, type Profile } from '@/lib/api';
+import { discoverFlocks, getFlockMatches, getProfile, updatePreferences, type DiscoveredFlock, type FlockMatch, type Profile } from '@/lib/api';
 import { BUDGETS, LA_AREAS } from '@/lib/flocks';
 import { shortPrice } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import { Button, Field } from '@/components/AuthUI';
-import { Chips, StepHeader, screen } from '@/components/FormUI';
+import { Chips, StepHeader, TextArea, screen } from '@/components/FormUI';
 
 type Sort = 'match' | 'newest' | 'space';
+type Step = 'basics' | 'story' | 'results';
+// 'loading' while the agent reads, 'failed' when it could not (no key, daily limit, model down): the rule-based list still works.
+type Reading = 'loading' | 'ready' | 'failed';
 
-// Figma 00i Find a flock. Open flocks that fit your budget, beds and dates, ranked on the server.
+const FIT = { strong: 'Strong fit', possible: 'Possible fit', weak: 'Weak fit' } as const;
+const FIT_RANK = { strong: 0, possible: 1, weak: 2 } as const;
+
+// Figma 00i Find a flock. You answer a few long questions once; an agent reads them against each open flock you already pass the
+// rules for and says which you could apply to. Applying is still the Join button on the flock's page.
 export default function FindFlockPage() {
   const [me, setMe] = useState<Profile | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [step, setStep] = useState<Step>('results');
   const [flocks, setFlocks] = useState<DiscoveredFlock[] | null>(null);
+  const [matches, setMatches] = useState<Map<string, FlockMatch>>(new Map());
+  const [reading, setReading] = useState<Reading>('loading');
   const [sort, setSort] = useState<Sort>('match');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getProfile()
-      .then((p) => (setMe(p), setEditing(!hasBasics(p))))
+      .then((p) => (setMe(p), setStep(nextStep(p))))
       .catch((e) => setError(e.message));
   }, []);
 
   useEffect(() => {
-    if (!me || editing) return;
+    if (!me || step !== 'results') return;
     discoverFlocks()
       .then(setFlocks)
       .catch((e) => (setError(e.message), setFlocks([])));
-  }, [me, editing]);
+    getFlockMatches()
+      .then((ms) => (setMatches(new Map(ms.map((m) => [m.flockId, m]))), setReading('ready')))
+      .catch(() => (setMatches(new Map()), setReading('failed')));
+  }, [me, step]);
 
-  if (me && editing)
-    return (
-      <Basics
-        me={me}
-        onSaved={(p) => {
-          setMe(p);
-          setFlocks(null);
-          setEditing(false);
-        }}
-      />
-    );
+  // Saving basics or answers sends you back to results with a fresh list and a fresh read.
+  const saved = (p: Profile) => {
+    setMe(p);
+    setFlocks(null);
+    setReading('loading');
+    setStep(nextStep(p, step));
+  };
+  if (me && step === 'basics') return <Basics me={me} onSaved={saved} />;
+  if (me && step === 'story') return <Story me={me} onSaved={saved} />;
 
   const spots = (f: DiscoveredFlock) => (f.maxSize ? f.maxSize - f.members.length : Infinity);
+  // The agent's read comes first (strong to weak); flocks it did not read follow, by rule match.
+  const byAgent = (a: DiscoveredFlock, b: DiscoveredFlock) => {
+    const ra = matches.get(a.id), rb = matches.get(b.id);
+    if (ra && rb) return FIT_RANK[ra.fit] - FIT_RANK[rb.fit] || b.matchPct - a.matchPct;
+    return ra ? -1 : rb ? 1 : b.matchPct - a.matchPct;
+  };
   const shown = [...(flocks ?? [])]
     .filter((f) => sort !== 'space' || spots(f) > 0)
-    .sort((a, b) => (sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : b.matchPct - a.matchPct));
+    .sort((a, b) => (sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : byAgent(a, b)));
 
   return (
     <main className={screen}>
@@ -68,37 +84,50 @@ export default function FindFlockPage() {
             {label}
           </button>
         ))}
-        <button onClick={() => setEditing(true)} className="ml-auto text-base font-bold whitespace-nowrap text-accent">
+      </div>
+      <div className="flex justify-end gap-4">
+        <button onClick={() => setStep('story')} className="text-base font-bold whitespace-nowrap text-accent">
+          Your answers
+        </button>
+        <button onClick={() => setStep('basics')} className="text-base font-bold whitespace-nowrap text-accent">
           Your basics
         </button>
       </div>
 
+      {reading === 'loading' && <p className="animate-pulse text-base text-muted">Reading what you wrote…</p>}
+      {reading === 'failed' && (
+        <p className="text-base text-muted">Couldn&apos;t read your answers just now, so this list is ranked by your basics only.</p>
+      )}
       {error && <p className="text-base text-danger">{error}</p>}
       {!flocks ? (
         [0, 1, 2].map((i) => <div key={i} className="h-[104px] animate-pulse rounded-lg bg-surface" />)
       ) : shown.length === 0 ? (
         <p className="rough rounded-lg p-4 text-center text-lg text-muted [--fill:var(--color-surface)]">No open flocks right now.</p>
       ) : (
-        shown.map((f) => (
-          <Link key={f.id} href={`/flocks/${f.id}`} className="rough flex items-center gap-3 rounded-lg px-4 py-3.5 [--fill:var(--color-surface)]">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <p className="truncate text-[22px] font-bold text-ink">{f.name}</p>
-              <p className="truncate text-[15px] text-muted">{summary(f)}</p>
-              <div className="flex">
-                {f.members.slice(0, 5).map((m) => (
-                  <Avatar key={m.id} user={m} size={28} className="-mr-2 last:mr-0" />
-                ))}
+        shown.map((f) => {
+          const m = matches.get(f.id);
+          return (
+            <Link key={f.id} href={`/flocks/${f.id}`} className="rough flex items-center gap-3 rounded-lg px-4 py-3.5 [--fill:var(--color-surface)]">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="truncate text-[22px] font-bold text-ink">{f.name}</p>
+                <p className="truncate text-[15px] text-muted">{summary(f)}</p>
+                {m && <p className="text-[15px] text-ink">{m.reason}</p>}
+                <div className="flex">
+                  {f.members.slice(0, 5).map((p) => (
+                    <Avatar key={p.id} user={p} size={28} className="-mr-2 last:mr-0" />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <span className={`rounded-[7px] px-2.5 py-[3px] text-sm font-bold ${f.passes ? 'bg-accent-soft text-accent' : 'bg-card text-muted'}`}>
-                {f.matchPct}% match
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/chevron.svg" alt="" width={20} height={20} />
-            </div>
-          </Link>
-        ))
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <span className={`rounded-[7px] px-2.5 py-[3px] text-sm font-bold ${m ? (m.fit === 'weak' ? 'bg-card text-muted' : 'bg-accent-soft text-accent') : f.passes ? 'bg-accent-soft text-accent' : 'bg-card text-muted'}`}>
+                  {m ? FIT[m.fit] : `${f.matchPct}% match`}
+                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/chevron.svg" alt="" width={20} height={20} />
+              </div>
+            </Link>
+          );
+        })
       )}
       <div className="flex-1" />
       <p className="text-center text-base text-muted">
@@ -112,6 +141,9 @@ export default function FindFlockPage() {
 }
 
 const hasBasics = (p: Profile) => p.budget_max != null && !!p.move_in && !!p.neighborhoods?.length;
+const hasStory = (p: Profile) => !!p.about?.trim() && !!p.looking_for?.trim();
+// First visit walks through basics, then the long answers; after that you land on results and edit either from there.
+const nextStep = (p: Profile, from?: Step): Step => (!hasBasics(p) ? 'basics' : !hasStory(p) ? 'story' : from === 'basics' || from === 'story' || !from ? 'results' : from);
 
 // "1 spot · Silver Lake · $2.5-3.5k"
 function summary(f: DiscoveredFlock) {
@@ -158,7 +190,64 @@ function Basics({ me, onSaved }: { me: Profile; onSaved: (p: Profile) => void })
       {error && <p className="text-base text-danger">{error}</p>}
       <div className="flex-1" />
       <Button type="submit" disabled={busy || !areas.length || !moveIn}>
-        {busy ? 'Saving…' : 'Show flocks'}
+        {busy ? 'Saving…' : 'Next'}
+      </Button>
+    </form>
+  );
+}
+
+// The long answers. An agent reads them against each open flock's own words, so write like you would to a future roommate.
+function Story({ me, onSaved }: { me: Profile; onSaved: (p: Profile) => void }) {
+  const [about, setAbout] = useState(me.about ?? '');
+  const [lookingFor, setLookingFor] = useState(me.looking_for ?? '');
+  const [dealbreakers, setDealbreakers] = useState(me.dealbreakers_text ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const prefs = { about: about.trim(), looking_for: lookingFor.trim(), dealbreakers_text: dealbreakers.trim() || null };
+    setBusy(true);
+    try {
+      await updatePreferences(prefs);
+      onSaved({ ...me, ...prefs });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className={screen} onSubmit={save}>
+      <StepHeader title="Tell us what you want" subtitle="Write as much as you like. An agent reads this to find open flocks you could apply to." />
+      <TextArea
+        label="About you"
+        rows={5}
+        maxLength={2000}
+        placeholder="How do you live? Your schedule, habits, what a good week at home looks like…"
+        value={about}
+        onChange={(e) => setAbout(e.target.value)}
+      />
+      <TextArea
+        label="What you want in roommates and a home"
+        rows={5}
+        maxLength={2000}
+        placeholder="The vibe, how chores and guests should work, what you'd love to have nearby…"
+        value={lookingFor}
+        onChange={(e) => setLookingFor(e.target.value)}
+      />
+      <TextArea
+        label="Dealbreakers (optional)"
+        rows={3}
+        maxLength={2000}
+        placeholder="Anything that would make a flock a no."
+        value={dealbreakers}
+        onChange={(e) => setDealbreakers(e.target.value)}
+      />
+      {error && <p className="text-base text-danger">{error}</p>}
+      <div className="flex-1" />
+      <Button type="submit" disabled={busy || !about.trim() || !lookingFor.trim()}>
+        {busy ? 'Saving…' : 'Find my flocks'}
       </Button>
     </form>
   );
