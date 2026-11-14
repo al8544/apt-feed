@@ -1,3 +1,7 @@
+# Flock
+
+Collaborative apartment hunting: you and your flock swipe, shortlist, compare and tour places together. Design and roadmap: `docs/DESIGN.md`.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

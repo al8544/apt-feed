@@ -92,7 +92,6 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 | `budget_max` is ambiguous | `groupMatch` compares total `price` to the *average* of members' `budget_max` | Must define it as each person's maximum rent **share** (see §7.1) |
 | `subscribeToGroupSwipes` listens to every swipe in the table | `lib/api.ts` | Filter by flock, or one channel per flock |
 | `getSwipeDeck` builds a long `not.in (...)` URL | `lib/api.ts` | Breaks past a few hundred swipes; move to a SQL view/RPC |
-| Metadata still says "aptHunt" | `app/layout.tsx` | Rename to Flock |
 | No server code | no `app/api/**`, no `proxy.ts` | Agent and ingestion need a server |
 | Swipes are personal, not per flock | `swipes` has no `flock_id` | Thumbs votes need a flock context (§5.3) |
 | Browser-only Supabase session | `lib/supabase.ts` client in the browser | Route Handlers can't see who is calling; see §10 |
