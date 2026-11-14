@@ -88,6 +88,35 @@ file, then deploy the app. To run the app against a local database, start it wit
 `NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run dev` (shell variables beat `.env.local`).
 The Maps key only works on port 3000.
 
+## Galleries (ticket T5)
+
+**From the kit (no scraping).** The kit's property records hold real galleries: building, interior, lobby and aerial photos
+for every LA community (every one of them, median 33 per community). After `scripts/ingest-costar.ts`:
+
+```bash
+node scripts/ingest-costar-media.ts                       # dry run: counts only
+node --env-file=.env.ingest scripts/ingest-costar-media.ts --write --confirm <db-host>
+node --test lib/costar/media.test.ts
+```
+
+Needs migrations `0006` and `0007`. The swipe deck then flips through the gallery (tap the photo's left or right edge).
+
+**Not used: Apartments.com.** The team shipped the kit's galleries instead. `scripts/enrich-apartments-com.ts` stays in the repo, off unless `APARTMENTS_COM_ENRICH=on`, and must not be run before `docs/permissions/apartments-com.md` is filled in. It can add photos and a few details for the
+communities you list in `data/apartments-com-overrides.json` (`{"<costar_property_id>": "https://www.apartments.com/..."}`,
+matched by hand). Read `docs/permissions/apartments-com.md` first and fill in the approval record.
+
+```bash
+node scripts/enrich-apartments-com.ts           # reads pages already cached in .cache/apartments-com/, prints what they hold
+ENRICH_CONTACT=you@example.com node scripts/enrich-apartments-com.ts --fetch     # also downloads missing pages, politely
+node --env-file=.env.ingest scripts/enrich-apartments-com.ts --write --confirm <db-host>   # save (test database first)
+node --test lib/enrich/apartments-com.test.ts
+```
+
+Polite by design: one request at a time with a 4 to 8 second pause, honest User-Agent, robots.txt respected, pages cached on
+disk, and it **stops** if a page shows a CAPTCHA or blocks it. `APARTMENTS_COM_ENRICH=off` is the kill switch. Needs migration
+`0006`. The swipe deck flips through the gallery (tap the photo's left or right edge) with a "Photo: Apartments.com" credit,
+and a photo that fails to load falls back to the gradient.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -52,6 +52,10 @@ the Brooklyn seed is back. Redo the load below.
    ```bash
    node --env-file=.env.ingest scripts/ingest-costar.ts --write --confirm 127.0.0.1:54321
    ```
+3b. Galleries (from the kit, 8,957 photos):
+   ```bash
+   node --env-file=.env.ingest scripts/ingest-costar-media.ts --write --confirm 127.0.0.1:54321
+   ```
 4. Demo access: the app has no sign-in yet, so strict row-level security would hide everything from it.
    ```bash
    docker exec -i supabase_db_flock psql -U postgres -q < supabase/dev-open-access.sql

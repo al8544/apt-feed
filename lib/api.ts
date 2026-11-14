@@ -34,6 +34,7 @@ export type Listing = {
   pets: boolean | null;          // null = unknown, not "no"
   lat: number; lng: number; photos: string[];
   community_name?: string | null; // set on rows from listing_cards
+  photo_credit_url?: string | null; // Apartments.com page the enriched photos came from, if any
 };
 
 export type Profile = {
@@ -62,7 +63,7 @@ export type MapFilters = { likedByGroup?: boolean; maxPrice?: number; minBeds?: 
 
 const LISTING_COLS = 'id,address,neighborhood,price,beds,baths,sqft,pets,lat,lng,photos';
 // The map and deck read one card per community (view listing_cards, migration 0005).
-const CARD_COLS = `${LISTING_COLS},community_name`;
+const CARD_COLS = `${LISTING_COLS},community_name,photo_credit_url`;
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);

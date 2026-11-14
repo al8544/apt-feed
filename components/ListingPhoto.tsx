@@ -1,3 +1,5 @@
+'use client';
+import { useState } from 'react';
 import type { Listing } from '@/lib/api';
 
 // Placeholder gradients from the mockups, used while listings have no photos.
@@ -30,7 +32,10 @@ export default function ListingPhoto({
   rough?: boolean;
   children?: React.ReactNode;
 }) {
-  const src = listing.photos?.[index];
+  // A photo that fails to load (hotlink blocked, link rotted) falls back to the gradient instead of a broken image.
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+  const found = listing.photos?.[index];
+  const src = found && !failed.has(found) ? found : undefined;
   const layer = (inset: string, filter?: string) => (
     <div
       className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit]`}
@@ -38,7 +43,13 @@ export default function ListingPhoto({
     >
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
+        <img
+          src={src}
+          alt={listing.address}
+          draggable={false}
+          onError={() => setFailed((f) => new Set(f).add(src))}
+          className="absolute inset-0 size-full object-cover"
+        />
       )}
     </div>
   );
