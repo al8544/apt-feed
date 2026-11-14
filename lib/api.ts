@@ -2,6 +2,8 @@
 // UI code should import from this file only, never call supabase directly.
 import { supabase } from './supabase';
 import { voteState } from './compare';
+import { readEvents } from './agent/client';
+import type { AgentEvent } from './agent/schemas';
 
 // Who you are and which flock you're looking at. With sign-in, SessionGate (components/SessionGate.tsx) sets both
 // from the Supabase session and the flock picked on "Your flocks", before any screen renders.
@@ -114,7 +116,7 @@ async function json<T>(res: Response): Promise<T> {
 
 export { REASONS as FEEDBACK_REASONS } from './agent/feedback';
 
-// The commute pin: where you travel to most. Private to you (row-level security); the flock only ever gets distances (migration 0016).
+// The commute pin: where you travel to most. Private to you (row-level security); the flock only ever gets distances (migration 0018).
 export type Pin = { lat: number; lng: number; label: string | null };
 export async function getMyPin(): Promise<Pin | null> {
   return (check(await supabase.from('member_pins').select('lat,lng,label').eq('user_id', CURRENT_USER_ID).maybeSingle()) as Pin | null) ?? null;
@@ -163,6 +165,23 @@ export type FlockMatch = { flockId: string; fit: 'strong' | 'possible' | 'weak';
 
 export async function getFlockMatches(): Promise<FlockMatch[]> {
   return (await json<{ matches: FlockMatch[] }>(await authFetch('/api/flocks/match', { method: 'POST' }))).matches;
+}
+
+// T15: Ducktect best option (docs/DESIGN.md §8.9). Streams steps, then one `result` the server built from the database and tool output.
+// Read-only: it never writes. Throws the server's message on a refusal (signed out, not in the flock, daily limit).
+export type { DucktectResult, DucktectPick } from './agent/ducktect';
+export type DucktectViewport = { south: number; north: number; west: number; east: number };
+export async function askDucktect(
+  body: { text: string; flockId?: string | null; viewport?: DucktectViewport; filters?: { maxRent?: number; beds?: number; pets?: boolean } },
+  onEvent: (e: AgentEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await authFetch('/api/ducktect', { method: 'POST', body: JSON.stringify(body), signal });
+  if (!res.ok || !res.body) {
+    const b = await res.json().catch(() => ({}));
+    throw new Error(b.error ?? `Request failed (${res.status})`);
+  }
+  for await (const e of readEvents(res.body)) onEvent(e);
 }
 
 export async function getFlockProfile(flockId: string): Promise<DiscoveredFlock | null> {

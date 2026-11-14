@@ -39,16 +39,22 @@ export function toEvents(mode: string, data: unknown): AgentEvent[] {
 }
 
 // The NDJSON body for a Response. Always ends with `done`, and turns a thrown error into an `error` event instead of a broken stream.
-export function ndjson(source: AsyncIterable<[string, unknown]>, onEvent?: (e: AgentEvent) => void): ReadableStream<Uint8Array> {
+// `drop` hides events the browser should not see; `after` runs once the source is finished and may send more (Ducktect's final result).
+export function ndjson(
+  source: AsyncIterable<[string, unknown]>,
+  onEvent?: (e: AgentEvent) => void,
+  opts: { drop?: (e: AgentEvent) => boolean; after?: (send: (e: AgentEvent) => void) => Promise<void> } = {},
+): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
   return new ReadableStream({
     async start(controller) {
       const send = (e: AgentEvent) => {
         onEvent?.(e);
-        controller.enqueue(enc.encode(`${JSON.stringify(e)}\n`));
+        if (!opts.drop?.(e)) controller.enqueue(enc.encode(`${JSON.stringify(e)}\n`));
       };
       try {
         for await (const [mode, data] of source) for (const e of toEvents(mode, data)) send(e);
+        await opts.after?.(send);
       } catch (e) {
         send({ type: 'error', message: e instanceof Error ? e.message : 'The agent failed.' });
       }

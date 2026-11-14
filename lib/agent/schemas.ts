@@ -1,6 +1,7 @@
 // Shapes shared by the agent, its tools and the API routes (docs/DESIGN.md §8). zod, so the model's tool arguments are validated.
 import * as z from 'zod';
 import { REASONS } from './feedback.ts';
+import type { DucktectResult } from './ducktect.ts';
 
 // Per request, never from the model: who is asking and for which flock (docs/DESIGN.md §8.4).
 export const contextSchema = z.object({ userId: z.string().uuid(), flockId: z.string().uuid() });
@@ -35,6 +36,15 @@ export const resumeInput = z.object({
   decisions: z.array(z.object({ type: z.enum(['approve', 'reject']), message: z.string().max(500).optional() })).min(1).max(8),
 });
 
+// POST /api/ducktect (docs/DESIGN.md §8.9). The flock is optional: with none, Ducktect runs for you alone.
+const lat = z.number().min(-90).max(90), lng = z.number().min(-180).max(180);
+export const ducktectInput = z.object({
+  flockId: z.string().uuid().nullish(),
+  text: z.string().trim().min(1).max(500),
+  viewport: z.object({ south: lat, north: lat, west: lng, east: lng }).optional(),
+  filters: z.object({ maxRent: z.number().int().positive().max(100_000).optional(), beds: z.number().int().min(0).max(10).optional(), pets: z.boolean().optional() }).optional(),
+});
+
 // One line of the NDJSON stream the API sends (read in the browser by lib/agent/client.ts).
 export type AgentEvent =
   | { type: 'token'; text: string }
@@ -42,5 +52,6 @@ export type AgentEvent =
   | { type: 'step'; name: string } // a tool or subagent started
   | { type: 'tool_result'; name: string; content: string }
   | { type: 'interrupt'; actions: { name: string; args: Record<string, unknown> }[] }
+  | { type: 'result'; result: DucktectResult } // Ducktect only: the ranked picks, built from tool output and the database, never from the model's words
   | { type: 'error'; message: string }
   | { type: 'done' };

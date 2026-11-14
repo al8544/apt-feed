@@ -19,12 +19,20 @@ test('squareWkt is longitude first, centred, and about 2 x halfM wide', () => {
   assert.ok(Math.abs((Math.max(...lats) + Math.min(...lats)) / 2 - LAT) < 1e-6, 'centred on the point');
 });
 
-test('phrases map to what imagery can show; subjective ones are not checkable', () => {
+test('imagery labels are open-ended: anything nameable and visible from above is allowed, and aliases are tidied', () => {
   assert.equal(canonicalPhrase('Pool!'), 'swimming pool');
   assert.equal(canonicalPhrase('  tennis   courts '), 'tennis court');
-  assert.equal(canonicalPhrase('lots of trees'), null, 'only whole known phrases match, nothing is guessed');
+  assert.equal(canonicalPhrase('lots of trees'), 'tree cover', 'filler words are dropped before the alias is looked up');
   assert.equal(canonicalPhrase('greenery'), 'tree cover');
-  for (const subjective of ['quiet', 'safe', 'good light inside', 'walkable']) assert.equal(canonicalPhrase(subjective), null);
+  assert.equal(canonicalPhrase('a big backyard'), 'grass lawn');
+  for (const anything of ['basketball court', 'rooftop deck', 'solar panels', 'skate park', 'community garden', 'helipad', 'outdoor kitchen']) {
+    assert.equal(canonicalPhrase(anything), anything.replace('outdoor kitchen', 'outdoor kitchen'), anything);
+  }
+});
+
+test('feelings, indoor things and numbers are not visible from above, so they are refused', () => {
+  for (const no of ['quiet', 'safe', 'good light inside', 'walkable', 'natural light', 'dishwasher', '2 bathrooms', 'in unit laundry', 'near the metro', 'cozy vibe', '']) assert.equal(canonicalPhrase(no), null, no);
+  assert.equal(canonicalPhrase('a very long sentence about something nobody can see'), null, 'more than four words is a sentence, not a label');
 });
 
 // ---------- parsing ----------
