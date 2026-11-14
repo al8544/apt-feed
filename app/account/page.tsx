@@ -8,6 +8,7 @@ import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
 import PreferencesSheet from '@/components/PreferencesSheet';
+import UserSwitcher from '@/components/UserSwitcher';
 
 type Stats = { swipes: number; stashed: number; tours: number };
 
@@ -58,6 +59,7 @@ export default function AccountPage() {
         >
           Edit profile
         </button>
+        <UserSwitcher />
       </section>
 
       {error && <p className="px-4 pt-2 text-[13px] text-danger">{error}</p>}
