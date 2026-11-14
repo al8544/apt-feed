@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { createTour, rescheduleTour, getGroupMembers, getTours, type Listing, type Member, type Tour } from '@/lib/api';
-import { firstName, initials } from '@/lib/format';
+import { firstName, initials, area } from '@/lib/format';
 import Sheet from './Sheet';
 
 // shortcut: listings have no agent or open-house data yet, so the agent and the open tour times
@@ -61,7 +61,7 @@ export default function BookTourSheet({
       open={!!listing}
       onClose={onClose}
       title={rescheduleId ? 'Reschedule tour' : 'Book a tour'}
-      subtitle={listing ? `${listing.address} · ${listing.neighborhood}` : ''}
+      subtitle={listing ? `${listing.address} · ${area(listing)}` : ''}
     >
       {listing && <Slots key={listing.id} listing={listing} onBooked={onBooked} rescheduleId={rescheduleId} />}
     </Sheet>

@@ -9,7 +9,10 @@ export const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 export const shortPrice = (n: number) => `$${Math.round(n / 10) / 100}k`;
 
 export const specs = (l: Pick<Listing, 'beds' | 'baths' | 'sqft'>) =>
-  `${l.beds} bd · ${l.baths} ba · ${l.sqft.toLocaleString('en-US')} sqft`;
+  `${l.beds === 0 ? 'Studio' : `${l.beds} bd`} · ${l.baths} ba${l.sqft ? ` · ${l.sqft.toLocaleString('en-US')} sqft` : ''}`;
+
+// Where a listing is. The CoStar kit has no neighborhood yet, so fall back to the city.
+export const area = (l: Pick<Listing, 'neighborhood'>) => l.neighborhood ?? 'Los Angeles';
 
 export function initials(name: string) {
   return name

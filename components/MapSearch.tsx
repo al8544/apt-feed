@@ -3,7 +3,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import type { GroupListing } from '@/lib/api';
-import { shortPrice } from '@/lib/format';
+import { shortPrice, area } from '@/lib/format';
 import { flockScore } from '@/lib/compare';
 import Ducktective from './Ducktective';
 import { matchesQuery } from './MapFiltersSheet';
@@ -139,7 +139,7 @@ export default function MapSearch({
           aria-controls="map-search-list"
           aria-activedescendant={showList && options[active] ? `map-search-${active}` : undefined}
           aria-label="Search homes or places"
-          placeholder="Brooklyn, NY"
+          placeholder="Los Angeles, CA"
           value={text}
           onChange={(e) => (setText(e.target.value), setOpen(true), setActive(0))}
           onFocus={() => setOpen(true)}
@@ -204,7 +204,7 @@ export default function MapSearch({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/icons/heart.svg" alt="" width={13} height={13} className={o.listing.likes ? '' : 'opacity-0'} />
                       <span className="min-w-0 flex-1 truncate text-[17px] text-ink">
-                        {o.listing.address} · <span className="text-muted">{o.listing.neighborhood}</span>
+                        {o.listing.address} · <span className="text-muted">{area(o.listing)}</span>
                       </span>
                       <span className="shrink-0 text-[15px] font-bold text-accent">{shortPrice(o.listing.price)}</span>
                     </>

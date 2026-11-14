@@ -69,15 +69,17 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 
 | Route | Screen |
 |---|---|
-| `/` | Flock Picks (group feed, live via Supabase realtime) |
-| `/reels` | For You swipe deck (`ListingReel`) |
-| `/map`, `/map/[id]` | Map + listing |
-| `/tours` | Calendar and tours |
-| `/group` | Flock: members, rankings, preferences |
+| `/` | Redirects to `/group` (the app opens on the flock) |
+| `/picks` | Flock Picks (group feed, live via Supabase realtime) |
+| `/reels` | For You swipe deck (`ListingReel`): tap the photo to flip, "More info ›" for the listing; end-of-deck recap with review piles; Yes / Nope toasts with Undo |
+| `/map`, `/map/[id]` | Map + listing view (same deck, started at the tapped place) |
+| `/listing/[id]` | Listing detail: photo, price, who liked it, Book a tour, Stash |
+| `/tours`, `/tours/[id]` | Calendar (selected day's tours above Upcoming) and tour detail (RSVP toggle, Reschedule, Cancel) |
+| `/group`, `/members`, `/invite` | Flock: rankings, preferences, member list, invite link |
 | `/compare`, `/compare/pick` | Compare with weighted score |
-| `/account` | Account |
+| `/account`, `/stash` | Account and My Stash |
 
-**Tables the code uses** (inferred; there is **no schema or seed file in the repo**): `profiles`, `group_members(role)`, a group table keyed by `GROUP_ID`, `group_likes` (listing_id, likes, liked_by[]), `swipes(user_id, listing_id, direction)`, `stash`, `listings(id,address,neighborhood,price,beds,baths,sqft,pets,lat,lng,photos[])`, `tours`, `tour_attendees`, `messages`.
+**Tables the code uses** (now in `supabase/migrations/0001_schema.sql`, reconstructed from the code and live data, so **[verify]** it against `supabase db dump --schema public`; `listing_cards`, `communities`, `listing_media` and `listing_enrichment` were added after): `profiles`, `group_members(role)`, a group table keyed by `GROUP_ID`, `group_likes` (listing_id, likes, liked_by[]), `swipes(user_id, listing_id, direction)`, `stash`, `listings(id,address,neighborhood,price,beds,baths,sqft,pets,lat,lng,photos[])`, `tours`, `tour_attendees`, `messages`.
 
 **Scoring today:** `groupMatch()` in `lib/api.ts` (4 checks: price vs average budget, beds, pets, neighborhood) and `flockScore()` in `lib/compare.ts` (`70 × share of flock that liked + 0.3 × match %`, from the Figma dev note). Pure functions, tested with `node --test` in `lib/compare.test.ts`.
 
@@ -86,9 +88,9 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 | Gap | Where | Why it matters |
 |---|---|---|
 | Hard-coded single group and user | `GROUP_ID`, `CURRENT_USER_ID` (localStorage), `UserSwitcher` | Needs real accounts and many flocks |
-| No auth, and RLS status unknown | anon key in the browser | **Verify RLS immediately.** With the anon key and no RLS, anyone can read or write every row |
-| Schema and seed not in the repo | Supabase dashboard only | Teammates can't reproduce the DB. Export to `supabase/migrations/` first |
-| Data is a Brooklyn seed | `GROUP_NAME = 'Brooklyn Flock'`, map `CENTER` in NYC | CoStar's kit covers Los Angeles and Houston; demo city becomes LA |
+| No auth, and RLS was off | anon key in the browser | **Verified (T1):** with the anon key every table could be read and written. `supabase/migrations/0003_rls.sql` is the fix, but strict RLS hides everything from an app that does not sign anyone in, so demos apply `supabase/dev-open-access.sql` until sign-in (T9) lands. `node scripts/check-rls.mjs` tests it |
+| ~~Schema and seed not in the repo~~ **fixed (T1)** | `supabase/migrations/0001`–`0007`, `docs/LOCAL_DATABASE.md` | A teammate can rebuild the DB locally with `supabase start`. Still to do: diff the reconstructed schema against a real dump |
+| Data is a Brooklyn seed | **Code fixed (T4):** the app reads `listing_cards`, map centered on LA, `GROUP_NAME = 'Our Flock'`. **Your real Supabase project is still Brooklyn** until the cutover (`supabase/cutover-brooklyn-to-la.sql`, destructive, manual) | CoStar's kit covers Los Angeles and Houston; the demo city is LA |
 | `budget_max` is ambiguous | `groupMatch` compares total `price` to the *average* of members' `budget_max` | Must define it as each person's maximum rent **share** (see §7.1) |
 | `subscribeToGroupSwipes` listens to every swipe in the table | `lib/api.ts` | Filter by flock, or one channel per flock |
 | `getSwipeDeck` builds a long `not.in (...)` URL | `lib/api.ts` | Breaks past a few hundred swipes; move to a SQL view/RPC |
@@ -344,7 +346,9 @@ create policy "members read their flocks" on flocks for select
 
 ## 6. Data sources
 
-### 6.1 CoStar data kit — primary source **[planned]**
+### 6.1 CoStar data kit — primary source **[built: T3, verified on a local database]**
+
+**Status.** `scripts/ingest-costar.ts` loads 767 LA communities and 6,543 floor plans (1,747 records read; 980 Houston skipped; 2,181 plans without a rent, 287 priced per bed or bedroom, 3 without baths skipped). It is idempotent (a hash of every loaded row is identical after a re-run), dry-run by default, and guarded against writing to the project in `.env.local`. The mapping is `lib/costar/map.ts` (7 tests). Real field names are in the table below. The real project has none of it yet.
 
 **What we know** (from the track guide and the kit docs we were given):
 
@@ -352,22 +356,23 @@ create policy "members read their flocks" on flocks for select
 - Contents include `data/apartment-listing.jsonl` (1,747 apartment listing records across Los Angeles and Houston), `models/apartment-listing.md`, `schemas/apartment-listing.schema.json`, `schemas/openapi.yaml`. The track's Matterport quickstart also refers to a `residential-listings.csv` (Homes listings, which carry the `source.sourceType` field below) and "commercial records" in the same kit. **[verify]** the real file list after unzipping, and which file(s) hold rentals; the apartment file and the residential file may overlap or differ.
 - The kit is a password-protected zip (about 160 MB). The quickstart reads single files out of it with HTTP range requests, so the zip's table of contents is enough to list files without a full download.
 - Records are organized around **communities and floor plans**, not individual units. Useful fields: property/community ids, min and max rent, floor-plan rents, beds, baths, coordinates, primary photo, management company.
-- **Residential Listings** carry `source.sourceType`, an integer enum: `0 None, 1 Mls, 2 Multifamily, 3 Land, 4 NewHomes`. For an apartment product, `2 = Multifamily` is the one we want. **[verify]** that this is the field we filter on, and whether any `Mls` or `NewHomes` rows are rentals.
+- **Not on the apartment record.** `apartment-listing.jsonl` has no `sourceType`: every one of its 1,747 records is an active Apartments.com listing of a multifamily community, so there is nothing to filter on. LA is chosen by `address.state = 'CA'` and `address.city = 'Los Angeles'`.
+- **Residential Listings (`residential-listings.csv`, not used)** carry `source.sourceType`, an integer enum: `0 None, 1 Mls, 2 Multifamily, 3 Land, 4 NewHomes`. For an apartment product, `2 = Multifamily` is the one we want. **[verify]** that this is the field we filter on, and whether any `Mls` or `NewHomes` rows are rentals.
 - Not in the kit: interior galleries, personal agent contact info. Availability and public photo-display rights still need confirmation.
 
-**[verify] before coding the mapping:** read `models/apartment-listing.md` and the JSON schema, then fill the "source field" column below. We have not seen the real field names.
+**Mapping (filled in from `models/apartment-listing.md`):**
 
 | Our column | Source field | Notes |
 |---|---|---|
-| `communities.costar_property_id` | [verify] | Primary key for joins and dedupe |
-| `communities.name / address / city / postal_code` | [verify] | |
-| `communities.lat / lng` | [verify] | Needed for the map and for Vexcel; count how many rows lack it |
-| `communities.primary_photo_url` | [verify] | May be hotlink-restricted; test from the browser |
-| `communities.management_company` | [verify] | |
+| `communities.costar_property_id` | `propertyId` | Unique in the file; join key |
+| `communities.name / address / city / postal_code` | `buildingName`; `address.streetNumber`+`streetDirection`+`streetName`+`streetType`+`streetSuffix`; `address.city`; `address.postCode` (first 5 digits) | |
+| `communities.lat / lng` | `address.latitude` / `address.longitude` | All 767 LA records have them |
+| `communities.primary_photo_url` | `primaryPhoto.attachmentUri`, size segment `/112/` changed to `/113/` | Hotlinked from CoStar's CDN; it loaded in the browser |
+| `communities.management_company` | `propertyManagementCompanyName` | |
 | `communities.neighborhood` | derived | Kit may not have it. Derive from ZIP or a point-in-polygon on LA neighborhood boundaries; Google reverse geocoding is a fallback (we already have a Maps key). Use one **canonical LA neighborhood list** for this and for the profile/flock area pickers, because matching is by exact name |
-| `listings.beds / baths / sqft` | [verify] | |
-| `listings.rent_min / rent_max` | [verify] | Floor-plan rents; never present a range as one fixed price |
-| pet policy, amenities | [verify] | If absent, leave null and say "unknown" in the UI |
+| `listings.beds / baths / sqft` | floor plan `numBeds` / `numBaths` / `minSquareFeet` | `sqft` is null when 0 or missing; 0 beds is a studio |
+| `listings.rent_min / rent_max` | floor plan `minRent` / `maxRent` | `price = rent_min`. Plans with no rent (0 or null) or not priced per unit (`rentPricingType` 2 or 3) are skipped. 13 plans look like kit typos (min < $500 or max > 3x min) and are kept as given |
+| pet policy, amenities | not on this record | `listings.pets` is null (unknown); the app skips unknown checks instead of failing them |
 
 **Ingest script (`scripts/ingest-costar.ts`)**
 
@@ -381,7 +386,11 @@ create policy "members read their flocks" on flocks for select
 
 **Honest labeling**: the kit may be a snapshot. Show "Rent from kit · availability not confirmed" wherever availability matters; do not call anything "available now."
 
-### 6.2 Apartments.com images and details — enrichment **[planned]**
+### 6.2 Apartments.com images and details — enrichment **[built, deliberately unused]**
+
+**Status (T5).** The earlier assumption below, that the kit has one photo per community, is wrong for the *property* records: `commercial-property.jsonl` `attachments[]` holds real galleries (building, interior, lobby, aerial: 28,893 photos for 766 of the 767 LA communities, median 31, max 200). `scripts/ingest-costar-media.ts` loads them into `listing_media` (`source = 'costar_kit'`), migration `0007` makes `listing_cards.photos` the primary photo plus the gallery, and the swipe deck flips through them (tap the left or right half of the photo; "More info ›" opens the listing). Photos are hotlinked from CoStar's CDN; copying to Supabase Storage (§15 item 5) is still undecided. `lib/costar/media.ts` has 4 tests.
+
+**Decision (T5): the team ships the kit galleries and does not scrape.** The Apartments.com scraper below exists (`lib/enrich/apartments-com.ts`, `scripts/enrich-apartments-com.ts`, 6 tests) but is **off by default (`APARTMENTS_COM_ENRICH=on` to enable) and has never fetched a real page**: it needs a hand-made `data/apartments-com-overrides.json`, its test fixtures are synthetic (replace with saved real pages), and `docs/permissions/apartments-com.md` has blank evidence fields. It stops if blocked and never works around a CAPTCHA.
 
 **Why:** the kit has one primary photo per community. Apartments.com has galleries and richer details, and the track organizers gave explicit approval to scrape it for images and related data. The `Listing` type and `ListingReel` already render `photos: string[]`, so extra images drop straight into the existing swipe deck and detail views.
 
@@ -748,6 +757,8 @@ Existing pattern (`subscribeToMessages`, `subscribeToGroupSwipes`) is right. Ext
 
 Order is by what the demo needs; the demo path is bold.
 
+**Where we are (as of this branch):** T1 schema, seed and RLS files written and run on a local Postgres, not diffed against a real dump; T2 done; T3 done locally; T4 code done and used locally, real-project cutover not done; T5 galleries done from the kit, Apartments.com scraper optional and unrun. Everything marked done was tested against a **local** Supabase (`docs/LOCAL_DATABASE.md`), not your real project.
+
 | Phase | Work | Done when |
 |---|---|---|
 | **0 Foundation** | Export schema and seed to `supabase/migrations/`; confirm and enable RLS; `.gitignore` for `data/` and `.cache/`; rename to Flock; env vars; clear the Brooklyn seed rows (swipes, stash, tours, messages) when the real listings land | A teammate can recreate the DB from the repo |
@@ -782,7 +793,7 @@ Order is by what the demo needs; the demo path is bold.
 2. **`budget_max` means a per-person rent share** (§7.1). Reseed profiles accordingly.
 3. **Open-flock consent model** (§7.4).
 4. **Tours are simulated** until a real source exists (§9).
-5. **Photos: hotlink or copy to Supabase Storage** (§6.2). Copy is more reliable for the demo.
+5. **Photos: hotlink or copy to Supabase Storage** (§6.2). Copy is more reliable for the demo. **Current state: hotlinked** from CoStar's CDN (it works in testing); copying is not built. Revisit if images break before the demo.
 6. **Agent hosting.** A long-lived Node server for the demo (§8.6), or add a durable checkpointer.
 7. **Ducktect label and placement.** "Ducktect best option" is spelled as written by the team; confirm, then add the dropdown state and result sheet to Figma.
 8. **Settled:** a place is feasible if the flock's combined budget covers the rent, and flocks are any size from 2 up (3 is fine; nothing assumes 4).

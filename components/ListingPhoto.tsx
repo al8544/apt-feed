@@ -1,3 +1,5 @@
+'use client';
+import { useState } from 'react';
 import type { Listing } from '@/lib/api';
 
 // Placeholder gradients from the mockups, used while listings have no photos.
@@ -15,7 +17,8 @@ export function gradientFor(id: string) {
   return GRADIENTS[Math.abs(h) % GRADIENTS.length]!;
 }
 
-// `rough` gives the photo a hand-made grainy edge; children (badges) sit above it and stay crisp.
+// `rough` gives the photo a hand-made grainy edge: a roughened copy fills the box and a crisp copy sits 4px inside
+// it, so only the edge is noisy and the picture itself is untouched. Children (badges) stay crisp.
 export default function ListingPhoto({
   listing,
   index = 0,
@@ -29,18 +32,31 @@ export default function ListingPhoto({
   rough?: boolean;
   children?: React.ReactNode;
 }) {
-  const src = listing.photos?.[index];
+  // A photo that fails to load (hotlink blocked, link rotted) falls back to the gradient instead of a broken image.
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+  const found = listing.photos?.[index];
+  const src = found && !failed.has(found) ? found : undefined;
+  const layer = (inset: string, filter?: string) => (
+    <div
+      className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit]`}
+      style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter }}
+    >
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={listing.address}
+          draggable={false}
+          onError={() => setFailed((f) => new Set(f).add(src))}
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+    </div>
+  );
   return (
     <div className={`relative isolate ${rough ? '' : 'overflow-hidden'} ${className}`}>
-      <div
-        className="absolute inset-0 -z-10 overflow-hidden rounded-[inherit]"
-        style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter: rough ? 'url(#rough)' : undefined }}
-      >
-        {src && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
-        )}
-      </div>
+      {layer('inset-0', rough ? 'url(#rough)' : undefined)}
+      {rough && layer('inset-[4px]')}
       {children}
     </div>
   );

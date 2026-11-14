@@ -1,0 +1,20 @@
+<!-- SYNTHETIC fixture: hand-written in the shape schema.org pages use (ApartmentComplex JSON-LD). Replace it with a real
+     saved page (File > Save Page As) when you have one; the tests only rely on the structured data. -->
+<html><head>
+<meta property="og:image" content="//images.example-cdn.test/gallery/01.jpg">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+  {"@type":"ApartmentComplex","name":"City Lights on Fig","description":"  Bright studios and lofts near the 110.  ",
+   "petsAllowed":true,
+   "image":["http://images.example-cdn.test/gallery/01.jpg","https://images.example-cdn.test/gallery/02.jpg"],
+   "photo":[{"@type":"ImageObject","url":"https://images.example-cdn.test/gallery/03.jpg","name":"Lobby"},
+            {"@type":"ImageObject","contentUrl":"https://images.example-cdn.test/plans/A1.jpg","caption":"Floor plan A1"},
+            {"@type":"ImageObject","url":"not a url"}],
+   "amenityFeature":[{"@type":"LocationFeatureSpecification","name":"Pool","value":true},
+                     {"@type":"LocationFeatureSpecification","name":"Doorman","value":false},
+                     {"@type":"LocationFeatureSpecification","name":"Pool","value":true},
+                     {"@type":"LocationFeatureSpecification","name":"Laundry in unit"}]}
+]}
+</script>
+<script type="application/ld+json">{ this block is broken on purpose }</script>
+</head><body>City Lights on Fig</body></html>

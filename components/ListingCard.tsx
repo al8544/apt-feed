@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { GroupListing } from '@/lib/api';
-import { money, specs } from '@/lib/format';
+import { money, specs, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 
 // Figma "Selected Listing" on the map. Opens the full-screen listing view.
@@ -13,7 +13,7 @@ export default function ListingCard({ listing, className = '' }: { listing: Grou
         <p className="text-[21px] font-bold text-ink">{money(listing.price)}/mo</p>
         <p className="truncate text-[15px] text-muted">{specs(listing)}</p>
         <p className="truncate text-[15px] text-ink">
-          {listing.address}, {listing.neighborhood}
+          {listing.address}, {area(listing)}
         </p>
         {first && (
           <div className="flex items-center gap-1 pt-1 text-sm font-bold text-accent">

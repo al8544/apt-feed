@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getGroupMembers, getMapListings, getTours, type GroupListing, type Tour } from '@/lib/api';
-import { money, sameDay } from '@/lib/format';
+import { money, sameDay, area } from '@/lib/format';
 import TourCard from '@/components/TourCard';
 import Sheet from '@/components/Sheet';
 import BookTourSheet from '@/components/BookTourSheet';
@@ -244,7 +244,7 @@ function PickListingSheet({ open, onClose, onPick }: { open: boolean; onClose: (
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-bold text-ink">{l.address}</p>
                   <p className="truncate text-[15px] text-muted">
-                    {l.neighborhood} · {money(l.price)}
+                    {area(l)} · {money(l.price)}
                   </p>
                 </div>
                 {l.likes > 0 && (

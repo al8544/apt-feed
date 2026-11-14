@@ -1,10 +1,9 @@
 'use client';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { getStash, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
-import { money, specs } from '@/lib/format';
+import { money, specs, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 import Icon, { type IconName } from './Icon';
 
@@ -202,7 +201,6 @@ function SwipeCard({
   const rotate = useTransform(x, [-240, 240], [-8, 8]);
   const likeOpacity = useTransform(x, [20, SWIPE_THRESHOLD], [0, 1]);
   const nopeOpacity = useTransform(x, [-SWIPE_THRESHOLD, -20], [1, 0]);
-  const router = useRouter();
   const [photo, setPhoto] = useState(0);
   const leaving = useRef(false);
   const el = useRef<HTMLDivElement>(null);
@@ -231,12 +229,10 @@ function SwipeCard({
       ref={el}
       onTap={(_, info) => {
         const rect = el.current?.getBoundingClientRect();
-        // Not while the card is flying off or springing back: only a still card opens the listing.
+        // Not while the card is flying off or springing back. A tap always flips the photo: left half back, right half forward.
         if (!rect || leaving.current || x.isAnimating() || x.get() !== 0) return;
-        // Outer thirds flip photos; the middle opens the full listing.
-        const at = (info.point.x - rect.left) / rect.width;
-        if (photoCount < 2 || (at > 1 / 3 && at < 2 / 3)) return router.push(`/listing/${listing.id}`);
-        setPhoto((p) => (at < 0.5 ? Math.max(0, p - 1) : Math.min(photoCount - 1, p + 1)));
+        const left = info.point.x - rect.left < rect.width / 2;
+        setPhoto((p) => (left ? Math.max(0, p - 1) : Math.min(photoCount - 1, p + 1)));
       }}
       style={{ x, rotate }}
       className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
@@ -245,7 +241,7 @@ function SwipeCard({
         <div className="absolute inset-x-0 top-0 h-[170px] bg-gradient-to-b from-[rgba(42,23,8,0.45)] to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-b from-transparent to-[rgba(42,23,8,0.8)]" />
 
-        <div className="absolute inset-x-4 flex gap-1 top-[calc(max(10px,env(safe-area-inset-top))+50px)]">
+        <div className={`absolute inset-x-4 flex ${photoCount > 20 ? 'gap-px' : 'gap-1'} top-[calc(max(10px,env(safe-area-inset-top))+50px)]`}>
           {Array.from({ length: photoCount }, (_, i) => (
             <span key={i} className={`h-[3px] flex-1 rounded-[2px] ${i === photo ? 'bg-card' : 'bg-card/40'}`} />
           ))}
@@ -271,11 +267,32 @@ function SwipeCard({
             {specs(listing)}
             {listing.pets && ' · Pets OK'}
           </p>
+          {photo > 0 && listing.photo_credit_url && (
+            // Photos past the first come from Apartments.com; credit and link to the page. Not a tap on the card.
+            <a
+              href={listing.photo_credit_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onPointerDownCapture={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs underline opacity-85"
+            >
+              Photo: Apartments.com
+            </a>
+          )}
           <p className="flex items-center gap-1 text-[17px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/pin.svg" alt="" width={16} height={16} />
-            {listing.address} · {listing.neighborhood}
+            {listing.address} · {area(listing)}
           </p>
+          {/* The only way into the full listing from the deck. Not a tap on the card, so it doesn't flip the photo. */}
+          <Link
+            href={`/listing/${listing.id}`}
+            onPointerDownCapture={(e) => e.stopPropagation()}
+            className="text-sm font-bold underline opacity-90"
+          >
+            More info ›
+          </Link>
         </div>
       </ListingPhoto>
     </motion.div>

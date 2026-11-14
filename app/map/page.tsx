@@ -9,7 +9,7 @@ import Icon from '@/components/Icon';
 import MapFiltersSheet, { NO_FILTERS, applyFilters, type Filters } from '@/components/MapFiltersSheet';
 import MapSearch from '@/components/MapSearch';
 
-const CENTER = { lat: 40.712, lng: -73.955 };
+const CENTER = { lat: 34.0522, lng: -118.2437 }; // downtown Los Angeles
 type LatLng = { lat: number; lng: number };
 
 // Quick chips: each one flips part of the full filter set.
@@ -50,7 +50,7 @@ export default function MapPage() {
         <Map
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID}
           defaultCenter={CENTER}
-          defaultZoom={13}
+          defaultZoom={11}
           disableDefaultUI
           gestureHandling="greedy"
           onClick={() => setSelectedId(null)}

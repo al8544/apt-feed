@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CURRENT_USER_ID, type Tour } from '@/lib/api';
-import { firstName, money } from '@/lib/format';
+import { firstName, money, area } from '@/lib/format';
 import Avatar from './Avatar';
 
 function goingLabel(tour: Tour, groupSize?: number) {
@@ -26,7 +26,7 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <p className="truncate text-lg font-bold text-ink">{tour.listing.address}</p>
         <p className="truncate text-[15px] text-muted">
-          {time} · {tour.listing.neighborhood} · {money(tour.listing.price)}
+          {time} · {area(tour.listing)} · {money(tour.listing.price)}
         </p>
         <div className="flex items-center gap-1.5 pt-1">
           {tour.attendees.length > 0 && (

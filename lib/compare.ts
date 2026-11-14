@@ -27,7 +27,7 @@ export function metricValue(key: MetricKey, l: GroupListing, groupSize: number):
     case 'bedBath':
       return l.beds + l.baths / 10; // beds first, baths break ties
     case 'sqft':
-      return l.sqft;
+      return l.sqft ?? 0; // unknown size ranks last; shown as a dash
     case 'ppsf':
       return l.sqft ? l.price / l.sqft : Infinity;
     case 'flockScore':

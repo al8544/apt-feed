@@ -58,6 +58,65 @@ real users. Drop it when auth lands (ticket T9); the policies in `0003_rls.sql` 
 The schema file was reconstructed from `lib/api.ts` and the live data, not dumped from the database. Compare it with
 `supabase db dump --schema public` before relying on it.
 
+## CoStar listings (ticket T3)
+
+Real Los Angeles floor plans come from the CoStar kit. Put the zip anywhere and set `COSTAR_KIT_ZIP` and
+`COSTAR_ZIP_PASSWORD` in `.env.local` (never commit them; `data/` is gitignored), or extract it into `data/costar-kit/`.
+
+```bash
+node scripts/ingest-costar.ts            # dry run: reads the kit, prints the report, touches no database
+node --test lib/costar/map.test.ts       # unit tests for the mapping
+```
+
+To load a database, use a **test** database first (local `supabase start` + `supabase db reset`, or a second
+project), put its URL and service-role key in `.env.ingest` as `INGEST_SUPABASE_URL` and
+`INGEST_SUPABASE_SERVICE_ROLE_KEY`, apply `0004_costar.sql`, then:
+
+```bash
+node --env-file=.env.ingest scripts/ingest-costar.ts --write --confirm <that-database-host>
+```
+
+Safe to re-run: it upserts on the CoStar ids and never deletes (plans missing from a later kit get `active = false`).
+It refuses to write unless `--confirm` repeats the host, and refuses the project in `.env.local` unless `--allow-live`.
+The map and swipe deck read the view `listing_cards` (migration `0005`): one card per community, its cheapest active
+floor plan, so 739 LA cards instead of 6,543 plans. Votes stay on the floor plan.
+
+**Cutover from the Brooklyn seed (ticket T4)** is deliberately not a migration. `supabase/cutover-brooklyn-to-la.sql`
+deletes all swipes, stash, tours, attendees and messages and the Brooklyn listings, and rewrites the demo people for
+LA. Do it in this order, on a test database first and a backed-up real one after: `0004`, ingest, `0005`, the cutover
+file, then deploy the app. To run the app against a local database, start it with
+`NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run dev` (shell variables beat `.env.local`).
+The Maps key only works on port 3000.
+
+## Galleries (ticket T5)
+
+**From the kit (no scraping).** The kit's property records hold real galleries: building, interior, lobby and aerial photos
+for every LA community (every one of them, median 33 per community). After `scripts/ingest-costar.ts`:
+
+```bash
+node scripts/ingest-costar-media.ts                       # dry run: counts only
+node --env-file=.env.ingest scripts/ingest-costar-media.ts --write --confirm <db-host>
+node --test lib/costar/media.test.ts
+```
+
+Needs migrations `0006` and `0007`. The swipe deck then flips through the gallery (tap the photo's left or right edge).
+
+**Not used: Apartments.com.** The team shipped the kit's galleries instead. `scripts/enrich-apartments-com.ts` stays in the repo, off unless `APARTMENTS_COM_ENRICH=on`, and must not be run before `docs/permissions/apartments-com.md` is filled in. It can add photos and a few details for the
+communities you list in `data/apartments-com-overrides.json` (`{"<costar_property_id>": "https://www.apartments.com/..."}`,
+matched by hand). Read `docs/permissions/apartments-com.md` first and fill in the approval record.
+
+```bash
+node scripts/enrich-apartments-com.ts           # reads pages already cached in .cache/apartments-com/, prints what they hold
+ENRICH_CONTACT=you@example.com node scripts/enrich-apartments-com.ts --fetch     # also downloads missing pages, politely
+node --env-file=.env.ingest scripts/enrich-apartments-com.ts --write --confirm <db-host>   # save (test database first)
+node --test lib/enrich/apartments-com.test.ts
+```
+
+Polite by design: one request at a time with a 4 to 8 second pause, honest User-Agent, robots.txt respected, pages cached on
+disk, and it **stops** if a page shows a CAPTCHA or blocks it. `APARTMENTS_COM_ENRICH=off` is the kill switch. Needs migration
+`0006`. The swipe deck flips through the gallery (tap the photo's left or right edge) with a "Photo: Apartments.com" credit,
+and a photo that fails to load falls back to the gradient.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

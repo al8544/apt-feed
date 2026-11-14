@@ -1,12 +1,13 @@
 // Checks what the PUBLIC anon key can do against the project in .env.local: read and write another person's
 // private rows. Exits 1 if anything it should not be able to do succeeds.   node scripts/check-rls.mjs
+// Point it elsewhere (e.g. a local database) with RLS_CHECK_URL and RLS_CHECK_KEY.
 import { readFileSync } from 'node:fs';
 
 const env = Object.fromEntries(
   readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
     .split('\n').filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
 );
-const URL_ = env.NEXT_PUBLIC_SUPABASE_URL, KEY = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const URL_ = process.env.RLS_CHECK_URL ?? env.NEXT_PUBLIC_SUPABASE_URL, KEY = process.env.RLS_CHECK_KEY ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const call = (method, path, body) =>
   fetch(`${URL_}/rest/v1/${path}`, {
     method,
