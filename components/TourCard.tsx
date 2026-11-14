@@ -1,4 +1,3 @@
-import { ChevronRight } from 'lucide-react';
 import { CURRENT_USER_ID, type Tour } from '@/lib/api';
 import { firstName, money } from '@/lib/format';
 import Avatar from './Avatar';
@@ -11,20 +10,21 @@ function goingLabel(tour: Tour, groupSize?: number) {
   return `${names.slice(0, 2).join(', ')}${n > 2 ? ` +${n - 2}` : ''} going`;
 }
 
+// Figma "Tour Card".
 export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: number }) {
   const d = new Date(tour.startsAt);
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return (
-    <div className="flex items-center gap-3.5 rounded-[18px] bg-surface p-3.5">
-      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl bg-white">
-        <span className="text-[11px] font-semibold text-accent">
+    <div className="rough flex items-center gap-3.5 rounded-[18px] p-3.5 [--fill:var(--color-surface)]">
+      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl bg-card font-bold">
+        <span className="text-[13px] leading-tight text-accent">
           {d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
         </span>
-        <span className="text-[22px] leading-none font-bold text-ink">{d.getDate()}</span>
+        <span className="text-[26px] leading-none text-ink">{d.getDate()}</span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <p className="truncate text-[15px] font-semibold text-ink">{tour.listing.address}</p>
-        <p className="truncate text-[13px] text-muted">
+        <p className="truncate text-lg font-bold text-ink">{tour.listing.address}</p>
+        <p className="truncate text-[15px] text-muted">
           {time} · {tour.listing.neighborhood} · {money(tour.listing.price)}
         </p>
         <div className="flex items-center gap-1.5 pt-1">
@@ -35,10 +35,11 @@ export default function TourCard({ tour, groupSize }: { tour: Tour; groupSize?: 
               ))}
             </div>
           )}
-          <span className="truncate text-xs font-medium text-muted">{goingLabel(tour, groupSize)}</span>
+          <span className="truncate text-sm text-muted">{goingLabel(tour, groupSize)}</span>
         </div>
       </div>
-      <ChevronRight size={20} className="shrink-0 text-muted" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/chevron.svg" alt="" width={20} height={20} />
     </div>
   );
 }

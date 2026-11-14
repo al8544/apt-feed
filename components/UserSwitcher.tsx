@@ -18,7 +18,7 @@ export default function UserSwitcher() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="mt-1 flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink"
+        className="rough mt-1 flex items-center gap-1.5 rounded-full px-4 py-2 text-[17px] font-bold text-ink"
       >
         <Users size={16} />
         Switch user
@@ -26,7 +26,7 @@ export default function UserSwitcher() {
       <Sheet open={open} onClose={() => setOpen(false)} title="Who are you?">
         <div className="flex flex-col pb-2">
           {!members ? (
-            <p className="py-6 text-center text-[13px] text-muted">Loading crew…</p>
+            <p className="py-6 text-center text-base text-muted">Loading crew…</p>
           ) : (
             members.map((m) => (
               <button
@@ -36,8 +36,8 @@ export default function UserSwitcher() {
               >
                 <Avatar user={m} size={40} />
                 <span className="flex-1">
-                  <span className="block text-[15px] font-semibold text-ink">{m.display_name}</span>
-                  <span className="block text-[13px] text-muted">@{m.username}</span>
+                  <span className="block text-lg font-bold text-ink">{m.display_name}</span>
+                  <span className="block text-base text-muted">@{m.username}</span>
                 </span>
                 {m.id === CURRENT_USER_ID && <Check size={20} className="text-accent" />}
               </button>

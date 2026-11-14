@@ -1,72 +1,65 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Bookmark, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import {
-  CURRENT_USER_ID,
   getGroupFeed,
+  getGroupMembers,
+  getMySwipes,
   getStash,
-  getStories,
   stash,
   subscribeToGroupSwipes,
-  swipe,
-  undoSwipe,
   unstash,
   type FeedPost,
-  type Story,
+  type GroupListing,
 } from '@/lib/api';
-import { money, specs, timeAgo } from '@/lib/format';
-import Avatar from '@/components/Avatar';
-import StoryRing from '@/components/StoryRing';
-import ListingPhoto from '@/components/ListingPhoto';
-import MatchBadge from '@/components/MatchBadge';
+import { timeAgo } from '@/lib/format';
+import Icon from '@/components/Icon';
+import PickCard from '@/components/PickCard';
+import BookTourSheet from '@/components/BookTourSheet';
 
-// Optimistically flip an id in a Set, then revert if the API call fails.
-function useOptimisticSet() {
-  const [set, setSet] = useState<Set<string>>(new Set());
-  const flip = (id: string, on: boolean) =>
-    setSet((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  const toggle = (id: string, call: (on: boolean) => Promise<void>) => {
-    const on = !set.has(id);
-    flip(id, on);
-    call(on).catch(() => flip(id, !on));
-  };
-  return [set, setSet, toggle] as const;
+type Sort = 'newest' | 'liked' | 'unseen';
+type Pick = { listing: GroupListing; lastLikedAt: string };
+
+// One card per listing (the feed has one row per swipe), newest swipe first.
+function toPicks(feed: FeedPost[]): Pick[] {
+  const seen = new Map<string, Pick>();
+  for (const p of feed) if (!seen.has(p.listing.id)) seen.set(p.listing.id, { listing: p.listing, lastLikedAt: p.swipedAt });
+  return [...seen.values()];
 }
 
-export default function HomePage() {
-  const [stories, setStories] = useState<Story[] | null>(null);
-  const [feed, setFeed] = useState<FeedPost[] | null>(null);
+function badge(iso: string) {
+  const ago = timeAgo(iso);
+  return ago === 'now' || ago.endsWith('m') ? 'New' : `${ago} ago`;
+}
+
+export default function FlockPicksPage() {
+  const router = useRouter();
+  const [picks, setPicks] = useState<Pick[] | null>(null);
+  const [groupSize, setGroupSize] = useState(0);
+  const [mySwipes, setMySwipes] = useState<Map<string, 'left' | 'right'>>(new Map());
+  const [stashed, setStashed] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<Sort>('newest');
+  const [touring, setTouring] = useState<GroupListing | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [liked, setLiked, toggleLike] = useOptimisticSet();
-  const [stashed, setStashed, toggleStash] = useOptimisticSet();
 
   useEffect(() => {
-    getStories().then(setStories).catch((e) => (setError(e.message), setStories([])));
-    getGroupFeed()
-      .then((posts) => {
-        setFeed(posts);
-        setLiked(new Set(posts.filter((p) => p.listing.likedBy.some((u) => u.id === CURRENT_USER_ID)).map((p) => p.listing.id)));
-      })
-      .catch((e) => (setError(e.message), setFeed([])));
-    getStash()
-      .then((ls) => setStashed(new Set(ls.map((l) => l.id))))
-      .catch(() => {});
-  }, [setLiked, setStashed]);
+    const load = () =>
+      getGroupFeed()
+        .then((f) => setPicks(toPicks(f)))
+        .catch((e) => (setError(e.message), setPicks([])));
+    load();
+    getGroupMembers().then((m) => setGroupSize(m.length)).catch(() => {});
+    getMySwipes().then(setMySwipes).catch(() => {});
+    getStash().then((ls) => setStashed(new Set(ls.map((l) => l.id)))).catch(() => {});
 
-  // Live: when anyone in the crew swipes, refresh the feed and story rings.
-  useEffect(() => {
+    // Live: when anyone in the flock swipes, refresh.
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = subscribeToGroupSwipes(() => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        getGroupFeed().then(setFeed).catch(() => {});
-        getStories().then(setStories).catch(() => {});
+        load();
+        getMySwipes().then(setMySwipes).catch(() => {});
       }, 300);
     });
     return () => {
@@ -75,168 +68,91 @@ export default function HomePage() {
     };
   }, []);
 
+  function toggleStash(id: string) {
+    const on = !stashed.has(id);
+    const flip = (v: boolean) =>
+      setStashed((prev) => {
+        const s = new Set(prev);
+        if (v) s.add(id);
+        else s.delete(id);
+        return s;
+      });
+    flip(on);
+    (on ? stash(id) : unstash(id)).catch(() => flip(!on));
+  }
+
+  const unseen = (picks ?? []).filter((p) => !mySwipes.has(p.listing.id));
+  const shown =
+    sort === 'unseen' ? unseen : sort === 'liked' ? [...(picks ?? [])].sort((a, b) => b.listing.likes - a.listing.likes) : picks ?? [];
+
+  const chips: [Sort, string][] = [
+    ['newest', 'Newest'],
+    ['liked', 'Most liked'],
+    ['unseen', `Not seen yet · ${unseen.length}`],
+  ];
+
   return (
     <main>
-      <header className="px-4 pt-[max(8px,env(safe-area-inset-top))] pb-2">
-        <h1 className="text-[26px] font-bold tracking-[-1.04px] text-ink">aptHunt</h1>
+      <header className="flex items-center gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2.5">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[34px] font-bold text-ink">Flock picks</h1>
+          <p className="text-[17px] text-muted">Places your flock liked</p>
+        </div>
+        <Link href="/account" aria-label="Settings" className="text-ink">
+          <Icon name="settings" />
+        </Link>
       </header>
 
-      <div className="no-scrollbar flex gap-3.5 overflow-x-auto px-3 pt-1.5 pb-3">
-        {!stories
-          ? Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="flex shrink-0 flex-col items-center gap-1.5">
-                <div className="size-[72px] animate-pulse rounded-full bg-surface" />
-                <div className="h-3 w-12 animate-pulse rounded bg-surface" />
-              </div>
-            ))
-          : stories.map((s) => (
-              <StoryRing
-                key={s.user.id}
-                user={s.user}
-                hasNew={s.hasNew}
-                label={s.user.id === CURRENT_USER_ID ? 'your swipes' : s.user.username}
-              />
-            ))}
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3.5">
+        {chips.map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setSort(key)}
+            aria-pressed={sort === key}
+            className={`rough shrink-0 rounded-full px-3.5 py-1.5 text-base font-bold whitespace-nowrap ${
+              sort === key ? 'text-card [--fill:var(--color-ink)]' : 'text-ink'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="h-[0.5px] bg-line" />
+      {error && <p className="px-4 pb-3 text-[15px] text-danger">{error}</p>}
 
-      {error && <p className="px-4 py-3 text-[13px] text-danger">{error}</p>}
+      <div className="flex flex-col gap-3.5 px-4 pb-6">
+        {!picks ? (
+          [0, 1].map((i) => <div key={i} className="h-[340px] animate-pulse rounded-[20px] bg-card" />)
+        ) : shown.length === 0 ? (
+          <div className="rough flex flex-col items-center gap-2 rounded-[20px] px-8 py-12 text-center">
+            <p className="text-xl font-bold text-ink">
+              {sort === 'unseen' ? "You've seen them all" : 'No flock picks yet'}
+            </p>
+            <p className="text-base text-muted">When someone in your flock likes a place, it shows up here.</p>
+            <Link href="/reels" className="rough mt-2 rounded-full px-4 py-2 text-lg font-bold text-card [--fill:var(--color-ink)]">
+              Start swiping
+            </Link>
+          </div>
+        ) : (
+          shown.map(({ listing, lastLikedAt }) => (
+            <PickCard
+              key={listing.id}
+              listing={listing}
+              badge={badge(lastLikedAt)}
+              groupSize={groupSize}
+              stashed={stashed.has(listing.id)}
+              onTour={() => setTouring(listing)}
+              onStash={() => toggleStash(listing.id)}
+            />
+          ))
+        )}
+      </div>
 
-      {!feed ? (
-        <PostSkeleton />
-      ) : feed.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <p className="text-[15px] font-semibold text-ink">No group swipes yet</p>
-          <p className="text-[13px] text-muted">When someone in your crew swipes right, it shows up here.</p>
-          <Link href="/reels" className="mt-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">
-            Start swiping
-          </Link>
-        </div>
-      ) : (
-        feed.map((post) => (
-          <Post
-            key={post.id}
-            post={post}
-            liked={liked.has(post.listing.id)}
-            stashed={stashed.has(post.listing.id)}
-            onLike={() =>
-              toggleLike(post.listing.id, (on) => (on ? swipe(post.listing.id, 'right') : undoSwipe(post.listing.id)))
-            }
-            onStash={() => toggleStash(post.listing.id, (on) => (on ? stash(post.listing.id) : unstash(post.listing.id)))}
-          />
-        ))
-      )}
+      <BookTourSheet
+        listing={touring}
+        onClose={() => setTouring(null)}
+        onBooked={(id, at) => router.push(`/tours?added=${id}&at=${at.toISOString()}`)}
+      />
     </main>
-  );
-}
-
-function likedByText(post: FeedPost, liked: boolean) {
-  const others = post.listing.likedBy.filter((p) => p.id !== CURRENT_USER_ID).map((p) => p.username);
-  const names = liked ? ['you', ...others] : others;
-  if (!names.length) return null;
-  if (names.length === 1) return <>Liked by <b className="font-semibold">{names[0]}</b></>;
-  if (names.length === 2)
-    return <>Liked by <b className="font-semibold">{names[0]}</b> and <b className="font-semibold">{names[1]}</b></>;
-  return (
-    <>
-      Liked by <b className="font-semibold">{names[0]}</b> and {names.length - 1} others in your group
-    </>
-  );
-}
-
-function Post({
-  post,
-  liked,
-  stashed,
-  onLike,
-  onStash,
-}: {
-  post: FeedPost;
-  liked: boolean;
-  stashed: boolean;
-  onLike: () => void;
-  onStash: () => void;
-}) {
-  const { listing, user } = post;
-  const photoCount = Math.max(1, listing.photos.length);
-  const [photo, setPhoto] = useState(0);
-
-  return (
-    <article className="pb-4">
-      <div className="flex items-center gap-2.5 px-3 py-2.5">
-        <Avatar user={user} size={32} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm">
-            <span className="font-semibold text-ink">{user.id === CURRENT_USER_ID ? 'you' : user.username}</span>{' '}
-            <span className="text-muted">swiped right · {timeAgo(post.swipedAt)}</span>
-          </p>
-          <p className="truncate text-xs text-muted">{listing.neighborhood}, Brooklyn</p>
-        </div>
-        <MoreHorizontal size={22} className="text-ink" aria-hidden />
-      </div>
-
-      <div className="relative aspect-[393/420] w-full">
-        <div
-          className="no-scrollbar flex size-full snap-x snap-mandatory overflow-x-auto"
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            setPhoto(Math.round(el.scrollLeft / el.clientWidth));
-          }}
-        >
-          {Array.from({ length: photoCount }, (_, i) => (
-            <ListingPhoto key={i} listing={listing} index={i} className="size-full shrink-0 snap-center" />
-          ))}
-        </div>
-        <div className="absolute top-3 right-3 rounded-full bg-black/55 px-[9px] py-1 text-xs font-medium text-white">
-          {photo + 1}/{photoCount}
-        </div>
-        <MatchBadge match={listing.match} className="absolute bottom-3 left-3" />
-      </div>
-
-      <div className="flex items-center gap-4 px-3 pt-2.5 pb-1.5">
-        <button onClick={onLike} aria-label={liked ? 'Unlike' : 'Like'} aria-pressed={liked}>
-          <Heart
-            size={26}
-            className={liked ? 'text-accent' : 'text-ink'}
-            fill={liked ? 'currentColor' : 'none'}
-            strokeWidth={liked ? 0 : 1.8}
-          />
-        </button>
-        <MessageCircle size={25} strokeWidth={1.8} className="text-ink" aria-hidden />
-        <div className="flex-1" />
-        <button onClick={onStash} aria-label={stashed ? 'Remove from stash' : 'Stash'} aria-pressed={stashed}>
-          <Bookmark size={25} strokeWidth={1.8} className="text-ink" fill={stashed ? 'currentColor' : 'none'} />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-[3px] px-3">
-        {likedByText(post, liked) && <p className="text-[13px] text-ink">{likedByText(post, liked)}</p>}
-        <div className="flex items-baseline gap-2 pt-1">
-          <p className="text-lg font-bold text-ink">{money(listing.price)}/mo</p>
-          <p className="truncate text-sm text-muted">{specs(listing)}</p>
-        </div>
-        <p className="text-sm text-ink">{listing.address}</p>
-      </div>
-    </article>
-  );
-}
-
-function PostSkeleton() {
-  return (
-    <div className="animate-pulse pb-4">
-      <div className="flex items-center gap-2.5 px-3 py-2.5">
-        <div className="size-8 rounded-full bg-surface" />
-        <div className="flex flex-col gap-1.5">
-          <div className="h-3 w-40 rounded bg-surface" />
-          <div className="h-2.5 w-24 rounded bg-surface" />
-        </div>
-      </div>
-      <div className="aspect-[393/420] w-full bg-surface" />
-      <div className="flex flex-col gap-2 px-3 pt-4">
-        <div className="h-3 w-56 rounded bg-surface" />
-        <div className="h-4 w-40 rounded bg-surface" />
-      </div>
-    </div>
   );
 }

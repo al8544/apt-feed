@@ -157,6 +157,14 @@ export async function undoSwipe(listingId: string): Promise<void> {
   check(await supabase.from('swipes').delete().eq('user_id', CURRENT_USER_ID).eq('listing_id', listingId));
 }
 
+// Every listing the current user has swiped on ("seen"), with which way.
+export async function getMySwipes(): Promise<Map<string, 'left' | 'right'>> {
+  const rows = check(
+    await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID)
+  ) as { listing_id: string; direction: 'left' | 'right' }[];
+  return new Map(rows.map((r) => [r.listing_id, r.direction]));
+}
+
 // ---------- Stash (bookmarks) ----------
 export async function stash(listingId: string): Promise<void> {
   check(await supabase.from('stash').upsert({ user_id: CURRENT_USER_ID, listing_id: listingId }));
@@ -197,6 +205,14 @@ export async function getTours(year: number, month: number /* 1-12 */): Promise<
   return rows.map((r) => ({
     id: r.id, startsAt: r.starts_at, listing: r.listing, attendees: r.tour_attendees.map((a) => a.user),
   }));
+}
+
+// Listings the flock has a tour booked for (any date).
+export async function getTouredListingIds(): Promise<Set<string>> {
+  const rows = check(
+    await supabase.from('tours').select('listing_id').eq('group_id', GROUP_ID)
+  ) as { listing_id: string }[];
+  return new Set(rows.map((r) => r.listing_id));
 }
 
 export async function createTour(listingId: string, startsAt: Date, attendeeIds: string[] = [CURRENT_USER_ID]): Promise<string> {

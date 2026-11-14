@@ -5,7 +5,7 @@ import Sheet from './Sheet';
 
 type Prefs = Pick<Profile, 'budget_max' | 'beds_min' | 'pets' | 'neighborhoods' | 'move_in' | 'bio'>;
 
-const field = 'w-full rounded-xl bg-surface px-3 py-2.5 text-[15px] text-ink outline-none focus:ring-2 focus:ring-ink/10';
+const field = 'w-full rounded-xl bg-surface px-3 py-2.5 text-[17px] text-ink outline-none focus:ring-2 focus:ring-ink/10';
 
 // Edits the current user's preferences, which feed into every group match score.
 export default function PreferencesSheet({
@@ -77,35 +77,35 @@ function PrefsForm({
   return (
     <form onSubmit={save} className="flex flex-col gap-3 pb-2">
       {showBio && (
-        <label className="flex flex-col gap-1 text-[13px] text-muted">
+        <label className="flex flex-col gap-1 text-[15px] text-muted">
           Bio
           <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2} className={field} />
         </label>
       )}
       <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-[13px] text-muted">
+        <label className="flex flex-1 flex-col gap-1 text-[15px] text-muted">
           Max budget ($/mo)
           <input type="number" inputMode="numeric" min={0} step={50} value={budget} onChange={(e) => setBudget(e.target.value)} className={field} />
         </label>
-        <label className="flex w-28 flex-col gap-1 text-[13px] text-muted">
+        <label className="flex w-28 flex-col gap-1 text-[15px] text-muted">
           Min beds
           <input type="number" inputMode="numeric" min={0} max={6} value={beds} onChange={(e) => setBeds(e.target.value)} className={field} />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-[13px] text-muted">
+      <label className="flex flex-col gap-1 text-[15px] text-muted">
         Neighborhoods (comma separated)
         <input value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="Williamsburg, Greenpoint" className={field} />
       </label>
-      <label className="flex flex-col gap-1 text-[13px] text-muted">
+      <label className="flex flex-col gap-1 text-[15px] text-muted">
         Move-in date
         <input type="date" value={moveIn} onChange={(e) => setMoveIn(e.target.value)} className={field} />
       </label>
-      <label className="flex items-center justify-between rounded-xl bg-surface px-3 py-3 text-[15px] text-ink">
+      <label className="flex items-center justify-between rounded-xl bg-surface px-3 py-3 text-[17px] text-ink">
         I have pets
         <input type="checkbox" checked={pets} onChange={(e) => setPets(e.target.checked)} className="size-5 accent-accent" />
       </label>
-      {error && <p className="text-[13px] text-danger">{error}</p>}
-      <button disabled={saving} className="mt-1 rounded-xl bg-ink py-3 text-[15px] font-semibold text-white disabled:opacity-50">
+      {error && <p className="text-[15px] text-danger">{error}</p>}
+      <button disabled={saving} className="mt-1 rough rounded-full py-3 [--fill:var(--color-ink)] text-[17px] font-bold text-card disabled:opacity-50">
         {saving ? 'Saving…' : 'Save'}
       </button>
     </form>

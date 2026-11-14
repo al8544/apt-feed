@@ -1,18 +1,24 @@
 @import "tailwindcss";
 
-/* Design tokens — exact values from the ApartmentHunt Figma file. */
+/* Design tokens — "Flock" theme from the ApartmentHunt Figma file.
+   Old token names are kept (ink, muted, surface, line, accent) so every screen picks up the new palette. */
 @theme {
-  --color-accent: #ff3b5c;
-  --color-ink: #0a0a0a;
-  --color-muted: #737373;
-  --color-surface: #f4f4f6;
-  --color-line: #e6e6e9;
-  --color-danger: #e5484d;
-  --color-match: #34c759;
+  --color-ink: #45270e;        /* text/primary, bg/inverse */
+  --color-muted: #7a6352;      /* text/secondary */
+  --color-surface: #f1e7d6;    /* bg/secondary (page) */
+  --color-card: #fbf6ec;       /* bg/primary, text/inverse */
+  --color-bar: #e6d5b8;        /* bg/bar */
+  --color-line: #e3d3b8;       /* border */
+  --color-accent: #4c5e40;     /* accent (moss) */
+  --color-accent-soft: #dce6d6;
+  --color-tan: #c7a46e;        /* palette/tan */
+  --color-faded: #a88450;      /* inactive tab icons */
+  --color-danger: #a4472c;
+  --color-match: #4c5e40;
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-gaegu), ui-rounded, system-ui, sans-serif;
 }
 
 body {
@@ -27,6 +33,43 @@ body {
   display: none;
 }
 
-.story-ring {
-  background-image: linear-gradient(45deg, #feda75 0%, #ff3b5c 50%, #7c3aed 100%);
+/* "Rough Fill": hand-drawn edge. Put the color in --fill; the filter is defined once in app/layout.tsx.
+   The fill sits on ::before so text and children stay crisp.
+   This file's CSS is unlayered (it beats Tailwind utilities), so leave elements that set their own position alone. */
+.rough {
+  isolation: isolate;
+}
+.rough:not(.fixed, .absolute, .sticky) {
+  position: relative;
+}
+.rough::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--fill, var(--color-card));
+  filter: url(#rough);
+  pointer-events: none;
+}
+
+/* Price range knobs (Map filters): only the thumbs take pointer events so both inputs stay draggable. */
+.range-knob::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 2.5px solid var(--color-ink);
+  cursor: grab;
+}
+.range-knob::-moz-range-thumb {
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 2.5px solid var(--color-ink);
+  cursor: grab;
 }

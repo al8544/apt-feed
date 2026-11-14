@@ -63,13 +63,13 @@ useEffect(() => {
             <div className="h-9 w-52 animate-pulse self-end rounded-2xl bg-surface" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-muted">Say hi to {member.display_name.split(' ')[0]} 👋</p>
+          <p className="py-10 text-center text-[15px] text-muted">Say hi to {member.display_name.split(' ')[0]} 👋</p>
         ) : (
           messages.map((m) => (
             <p
               key={m.id}
-              className={`max-w-[75%] rounded-2xl px-3 py-2 text-[15px] ${
-                m.sender_id === CURRENT_USER_ID ? 'self-end bg-ink text-white' : 'self-start bg-surface text-ink'
+              className={`max-w-[75%] rounded-2xl px-3 py-2 text-[17px] ${
+                m.sender_id === CURRENT_USER_ID ? 'self-end bg-ink text-card' : 'self-start bg-surface text-ink'
               }`}
             >
               {m.body}
@@ -78,18 +78,18 @@ useEffect(() => {
         )}
         <div ref={bottom} />
       </div>
-      {error && <p className="pb-2 text-[13px] text-danger">{error}</p>}
-      <form onSubmit={send} className="sticky bottom-0 flex gap-2 bg-white pt-1">
+      {error && <p className="pb-2 text-[15px] text-danger">{error}</p>}
+      <form onSubmit={send} className="sticky bottom-0 flex gap-2 bg-card pt-1">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Message…"
-          className="flex-1 rounded-full bg-surface px-4 py-2.5 text-[15px] outline-none"
+          className="flex-1 rounded-full bg-surface px-4 py-2.5 text-[17px] outline-none"
         />
         <button
           disabled={!draft.trim()}
           aria-label="Send"
-          className="flex size-10 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-full bg-accent text-card disabled:opacity-40"
         >
           <ArrowUp size={18} strokeWidth={2.5} />
         </button>

@@ -1,22 +1,32 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { House, Clapperboard, Map, Calendar, Users, type LucideIcon } from 'lucide-react';
+import Icon, { type IconName } from './Icon';
 
-const TABS: { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean }[] = [
-  { href: '/', label: 'Home', icon: House, match: (p) => p === '/' },
-  { href: '/reels', label: 'Reels', icon: Clapperboard, match: (p) => p.startsWith('/reels') },
-  { href: '/map', label: 'Map', icon: Map, match: (p) => p.startsWith('/map') },
-  { href: '/tours', label: 'Tours', icon: Calendar, match: (p) => p.startsWith('/tours') },
-  { href: '/group', label: 'Group', icon: Users, match: (p) => p.startsWith('/group') || p.startsWith('/account') },
+const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
+  { href: '/', label: 'Flock picks', icon: 'nest', match: (p) => p === '/' },
+  { href: '/reels', label: 'For you', icon: 'feather', match: (p) => p.startsWith('/reels') },
+  { href: '/map', label: 'Map', icon: 'migration', match: (p) => p.startsWith('/map') },
+  { href: '/tours', label: 'Calendar', icon: 'calendarTab', match: (p) => p.startsWith('/tours') },
+  {
+    href: '/group',
+    label: 'Flock',
+    icon: 'flock',
+    match: (p) => p.startsWith('/group') || p.startsWith('/account') || p.startsWith('/compare'),
+  },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const dark = pathname.startsWith('/reels') || pathname.startsWith('/map/'); // full-bleed photo screens
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t-[0.5px] border-line bg-white pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className={`rough fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 pb-[env(safe-area-inset-bottom)] ${
+        dark ? '[--fill:var(--color-ink)]' : '[--fill:var(--color-bar)]'
+      }`}
+    >
       <ul className="flex h-16 items-start pt-2">
-        {TABS.map(({ href, label, icon: Icon, match }) => {
+        {TABS.map(({ href, label, icon, match }) => {
           const active = match(pathname);
           return (
             <li key={href} className="flex-1">
@@ -24,10 +34,11 @@ export default function BottomNav() {
                 href={href}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
-                className="flex flex-col items-center gap-1"
+                className={`flex flex-col items-center gap-1 ${active ? (dark ? 'text-card' : 'text-ink') : 'text-faded'}`}
               >
-                <Icon size={26} strokeWidth={active ? 2.4 : 1.6} className={active ? 'text-ink' : 'text-muted'} />
-                <span className={`size-1 rounded-full ${active ? 'bg-accent' : 'bg-transparent'}`} />
+                <Icon name={icon} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={active ? '/icons/dot-on.svg' : '/icons/dot-off.svg'} alt="" width={4} height={4} />
               </Link>
             </li>
           );

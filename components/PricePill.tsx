@@ -1,11 +1,14 @@
-import { Heart } from 'lucide-react';
 import { shortPrice } from '@/lib/format';
 
+// Figma "Map Pin": price pin. Liked = a flock member swiped right.
 export default function PricePill({ price, liked, selected }: { price: number; liked: boolean; selected: boolean }) {
-  const tone = selected ? 'bg-black text-white' : liked ? 'bg-accent text-white' : 'bg-white text-ink';
+  const fill = selected ? '[--fill:var(--color-ink)] text-card' : liked ? '[--fill:var(--color-accent)] text-card' : 'text-ink';
   return (
-    <div className={`flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-[13px] font-bold whitespace-nowrap drop-shadow-[0_2px_4px_rgba(0,0,0,0.18)] ${tone}`}>
-      {liked && !selected && <Heart size={12} fill="currentColor" strokeWidth={0} />}
+    <div className={`rough flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-lg font-bold whitespace-nowrap ${fill}`}>
+      {liked && !selected && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/icons/heart-light.svg" alt="" width={12} height={12} />
+      )}
       {shortPrice(price)}
     </div>
   );
