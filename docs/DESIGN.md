@@ -39,7 +39,6 @@ Tags used below: **[built]** exists in code today · **[figma]** designed, not i
 | Rank and compare | 05 Flock, 08 Compare **[built]** | Score weights per the Figma dev note |
 | Account and prefs | 06 Account **[built]** | |
 | Search, including **"Ducktect best option"** | `MapSearch` search bar **[built]**; the Ducktect option **[planned]**, not yet in Figma | Type anything; pick "Ducktect best option" and the agent finds and explains the best match using CoStar listings + Vexcel aerial imagery (§8.9) |
-| Ask the agent | none yet **[planned]** | "Ask Flock" sheet: roommate proposals, shortlist updates, feedback (§8) |
 
 ### 2.2 Friends flock vs Open flock
 
@@ -649,7 +648,6 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 
 ### 8.8 Agent UI
 
-- **Ask Flock sheet** (from the Flock tab and Flock Picks): the plan renders as a checklist, subagent steps as short status lines ("Aerial check 7 of 20"), results as cards in the shared shortlist.
 - An interrupt renders an approval card ("Invite Maya and Sam to The Nest?"); approve or reject resumes the thread.
 - A thumbs-down is written to `swipes` directly (with an optional reason chip); the client then calls `POST /api/agent/feedback`, which runs a short, rate-limited `process_feedback` task: record the reason in `flock_feedback`, apply the removal rule (§7.3), re-search if needed, and update the shortlist. Everyone sees the change through realtime (§11).
 - A change in membership triggers the same task once to review the shortlist against the new combined budget.
@@ -767,7 +765,7 @@ Order is by what the demo needs; the demo path is bold.
 | **1 Real listings** | **Read the kit docs; `ingest-costar.ts`; `listings` view; switch the map center and seed group to LA** | Map and swipe deck show real LA floor plans |
 | 2 Image enrichment | Permission note; `enrich-apartments-com.ts` for the demo properties first; gallery in `ListingReel`; photo credit | Demo listings have several photos, and the app looks fine without them |
 | **3 Flocks and matching** | `flocks`/`flock_members` migration; `swipes.flock_id` and thumbs votes; `proposals`; `join_flock`; Friends/Open creation; `compat`, `listing-fit`; seeded fictional profiles for the demo | Create a flock, join an open one by rules, see why a place fits |
-| **4 Deep Agent** | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs`; streaming "Ask Flock" sheet | "We need 3 bedrooms under $4,700" yields a plan, a roommate proposal and a saved, explained shortlist |
+| **4 Deep Agent** | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs` | "We need 3 bedrooms under $4,700" yields a roommate proposal and a saved, explained shortlist |
 | **5 Vexcel + Ducktect** | `lib/enrich/vexcel.ts`, `aerial_queries`, `aerial-evidence` subagent, pre-warm script; "Ducktect best option" in `MapSearch`; `/api/ducktect`; result sheet and map restyle | Typing a prose wish and picking Ducktect returns ranked picks with aerial evidence |
 | 6 Auth | Supabase Auth screens, `proxy.ts`, remove hard-coded ids, demo switcher behind a flag | Real sign-in works; two phones still demo |
 | 7 Optional | Rent split by room; tour slots; comparison polish; LangSmith traces; Deep Agents memory | Only if time remains |
@@ -780,7 +778,7 @@ Order is by what the demo needs; the demo path is bold.
 
 1. **0:00** The problem: you need compatible people *and* an apartment that fits all of them.
 2. **0:20** Sign in, open Your Flocks; create an Open flock with a short, wordy profile and join rules.
-3. **0:45** Ask Flock: "Three of us, $4,700 combined, three bedrooms." The Deep Agent's plan streams; the roommate-matcher proposes a group; the user approves the invites and the flock accepts.
+3. **0:45** (agent entry point to be decided) "Three of us, $4,700 combined, three bedrooms." The Deep Agent's roommate-matcher proposes a group; the user approves the invites and the flock accepts.
 4. **1:10** In the map search bar, type "sunny 3 bed with a pool and trees near a park" and pick **Ducktect best option**. The searcher splits hard filters from visual phrases; the aerial-evidence subagent checks Vexcel imagery around the CoStar candidates; the best option appears with its aerial thumbnail and evidence line (photos from the kit and apartments.com). Add it to flock picks.
 5. **1:35** A roommate rejects one; the shortlist updates live on the other phone.
 6. **1:55** "Flock finds your people and your place, with real property data and an agent that takes action."
