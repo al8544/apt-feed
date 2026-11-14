@@ -8,6 +8,7 @@ import {
   getStash,
   getStories,
   stash,
+  subscribeToGroupSwipes,
   swipe,
   undoSwipe,
   unstash,
@@ -57,6 +58,22 @@ export default function HomePage() {
       .then((ls) => setStashed(new Set(ls.map((l) => l.id))))
       .catch(() => {});
   }, [setLiked, setStashed]);
+
+  // Live: when anyone in the crew swipes, refresh the feed and story rings.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = subscribeToGroupSwipes(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        getGroupFeed().then(setFeed).catch(() => {});
+        getStories().then(setStories).catch(() => {});
+      }, 300);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <main>

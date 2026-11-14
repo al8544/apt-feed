@@ -271,3 +271,12 @@ export function subscribeToMessages(onMessage: (m: Message) => void): () => void
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }
+// ---------- Live group activity (needs: alter publication supabase_realtime add table swipes;) ----------
+// Calls onChange whenever anyone swipes or undoes a swipe. Returns an unsubscribe function.
+export function subscribeToGroupSwipes(onChange: () => void): () => void {
+  const channel = supabase
+    .channel(`group-swipes:${GROUP_ID}:${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'swipes' }, () => onChange())
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
