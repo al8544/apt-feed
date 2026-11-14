@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getGroupMembers, getMapListings, getStash, stash, unstash, type GroupListing } from '@/lib/api';
+import { getFloorPlans, getGroupMembers, getMapListings, getStash, stash, unstash, type FloorPlan, type GroupListing } from '@/lib/api';
 import { money, specs, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
-import ListingPhoto from '@/components/ListingPhoto';
+import PhotoCarousel from '@/components/PhotoCarousel';
 import NavBar from '@/components/NavBar';
 import BookTourSheet from '@/components/BookTourSheet';
 
@@ -13,12 +13,17 @@ export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [listing, setListing] = useState<GroupListing | null | undefined>(undefined);
+  const [plans, setPlans] = useState<FloorPlan[]>([]);
   const [size, setSize] = useState(0);
   const [stashed, setStashed] = useState(false);
   const [booking, setBooking] = useState<GroupListing | null>(null);
 
   useEffect(() => {
-    getMapListings().then((ls) => setListing(ls.find((l) => l.id === id) ?? null)).catch(() => setListing(null));
+    getMapListings().then((ls) => {
+      const l = ls.find((x) => x.id === id) ?? null;
+      setListing(l);
+      if (l?.community_id) getFloorPlans(l.community_id).then(setPlans).catch(() => {});
+    }).catch(() => setListing(null));
     getGroupMembers().then((m) => setSize(m.length)).catch(() => {});
     getStash().then((ls) => setStashed(ls.some((l) => l.id === id))).catch(() => {});
   }, [id]);
@@ -46,7 +51,7 @@ export default function ListingDetailPage() {
         <p className="px-4 pt-6 text-center text-base text-muted">This listing isn&apos;t available.</p>
       ) : (
         <div className="flex flex-col gap-1.5 px-4 pt-1.5">
-          <ListingPhoto listing={listing} rough className="mb-2 h-[210px] w-full rounded-md" />
+          <PhotoCarousel listing={listing} plans={plans} />
           <p className="text-[32px] font-bold text-ink">{money(listing.price)}/mo</p>
           <p className="text-lg font-bold text-ink">{specs(listing)}{listing.pets && ' · Pets OK'}</p>
           <p className="text-[17px] text-muted">

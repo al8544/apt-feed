@@ -259,6 +259,12 @@ function SwipeCard({
           ))}
         </div>
 
+        {photoCount > 1 && (
+          <span className="absolute right-4 top-[calc(max(10px,env(safe-area-inset-top))+62px)] rounded-full bg-ink/60 px-2 py-0.5 text-sm font-bold text-card">
+            {photo + 1}/{photoCount}
+          </span>
+        )}
+
         <motion.span
           style={{ opacity: likeOpacity }}
           className="absolute top-40 left-6 -rotate-12 rounded-[5px] border-[3px] border-accent-soft px-2 text-3xl font-bold text-accent-soft"

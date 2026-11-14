@@ -46,6 +46,7 @@ export default function ListingPhoto({
         <img
           src={src}
           alt={listing.address}
+          loading={index ? 'lazy' : undefined}
           draggable={false}
           onError={() => setFailed((f) => new Set(f).add(src))}
           className="absolute inset-0 size-full object-cover"
