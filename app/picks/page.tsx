@@ -6,10 +6,9 @@ import {
   getGroupFeed,
   getGroupMembers,
   getMySwipes,
-  getStash,
-  stash,
   subscribeToGroupSwipes,
-  unstash,
+  swipe,
+  undoSwipe,
   type FeedPost,
   type GroupListing,
 } from '@/lib/api';
@@ -37,7 +36,6 @@ export default function FlockPicksPage() {
   const [picks, setPicks] = useState<Pick[] | null>(null);
   const [groupSize, setGroupSize] = useState(0);
   const [mySwipes, setMySwipes] = useState<Map<string, 'left' | 'right'>>(new Map());
-  const [stashed, setStashed] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<Sort>('newest');
   const [touring, setTouring] = useState<GroupListing | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +48,6 @@ export default function FlockPicksPage() {
     load();
     getGroupMembers().then((m) => setGroupSize(m.length)).catch(() => {});
     getMySwipes().then(setMySwipes).catch(() => {});
-    getStash().then((ls) => setStashed(new Set(ls.map((l) => l.id)))).catch(() => {});
 
     // Live: when anyone in the flock swipes, refresh.
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -67,17 +64,17 @@ export default function FlockPicksPage() {
     };
   }, []);
 
-  function toggleStash(id: string) {
-    const on = !stashed.has(id);
-    const flip = (v: boolean) =>
-      setStashed((prev) => {
-        const s = new Set(prev);
-        if (v) s.add(id);
-        else s.delete(id);
-        return s;
+  // Like = your thumbs-up vote, the same as Yes on the reels. Tapping again takes it back.
+  function toggleLike(id: string) {
+    const was = mySwipes.get(id) === 'right';
+    const set = (v: 'right' | null) =>
+      setMySwipes((prev) => {
+        const m = new Map(prev);
+        if (v) m.set(id, v); else m.delete(id);
+        return m;
       });
-    flip(on);
-    (on ? stash(id) : unstash(id)).catch(() => flip(!on));
+    set(was ? null : 'right');
+    (was ? undoSwipe(id) : swipe(id, 'right')).catch(() => set(was ? 'right' : null));
   }
 
   // A place the flock removed (thumbs-down from half the flock, rounded up) is off the active list.
@@ -137,9 +134,9 @@ export default function FlockPicksPage() {
               listing={listing}
               badge={badge(lastLikedAt)}
               groupSize={groupSize}
-              stashed={stashed.has(listing.id)}
+              liked={mySwipes.get(listing.id) === 'right'}
               onTour={() => setTouring(listing)}
-              onStash={() => toggleStash(listing.id)}
+              onLike={() => toggleLike(listing.id)}
             />
           ))
         )}

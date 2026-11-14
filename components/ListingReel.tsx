@@ -2,7 +2,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
-import { getStash, sendFeedback, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
+import { sendFeedback, swipe, undoSwipe, type GroupListing } from '@/lib/api';
 import { money, specs, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 import Icon, { type IconName } from './Icon';
@@ -34,18 +34,12 @@ export default function ListingReel({
 }) {
   // Parents pass a key that changes when `listings` loads, so this starts from the fresh list.
   const [deck, setDeck] = useState<GroupListing[] | null>(listings);
-  const [history, setHistory] = useState<GroupListing[]>([]);
-  const [stashed, setStashed] = useState<Set<string>>(new Set());
+  // `voted` = a thumbs-up or thumbs-down was saved; a pass saves nothing, so Back has nothing to undo on the server.
+  const [history, setHistory] = useState<{ listing: GroupListing; voted: boolean }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<Direction | 'updated' | null>(null);
   const [asking, setAsking] = useState<GroupListing | null>(null); // the place just thumbed down, while the reason sheet is open
   const card = useRef<CardHandle>(null);
-
-  useEffect(() => {
-    getStash()
-      .then((ls) => setStashed(new Set(ls.map((l) => l.id))))
-      .catch(() => {});
-  }, []);
 
   const [top, next] = deck ?? [];
   const ended = !!empty && !!deck && !top;
@@ -58,13 +52,13 @@ export default function ListingReel({
 
   function onSwiped(listing: GroupListing, dir: Direction) {
     setDeck((d) => d?.filter((l) => l.id !== listing.id) ?? d);
-    setHistory((h) => [...h, listing]);
+    setHistory((h) => [...h, { listing, voted: true }]);
     if (empty) setToast(dir);
     if (dir === 'left') setAsking(listing);
     swipe(listing.id, dir).catch((e) => {
       setError(e.message);
       setDeck((d) => (d ? [listing, ...d] : d));
-      setHistory((h) => h.filter((l) => l.id !== listing.id));
+      setHistory((h) => h.filter((x) => x.listing.id !== listing.id));
     });
   }
 
@@ -74,29 +68,21 @@ export default function ListingReel({
     sendFeedback(asking.id, reasons).then(() => setToast('updated')).catch((e) => setError(e.message));
   }
 
+  // Skip without voting: nothing is saved or shared, the place just leaves this deck (it can show again next visit).
+  function pass() {
+    if (!top) return;
+    setDeck((d) => d?.filter((l) => l.id !== top.id) ?? d);
+    setHistory((h) => [...h, { listing: top, voted: false }]);
+  }
+
   function undo() {
     const last = history.at(-1);
     if (!last) return;
     setAsking(null);
     setToast(null);
     setHistory((h) => h.slice(0, -1));
-    setDeck((d) => [last, ...(d ?? [])]);
-    undoSwipe(last.id).catch((e) => setError(e.message));
-  }
-
-  function toggleStash() {
-    if (!top) return;
-    const id = top.id;
-    const on = !stashed.has(id);
-    const flip = (v: boolean) =>
-      setStashed((prev) => {
-        const s = new Set(prev);
-        if (v) s.add(id);
-        else s.delete(id);
-        return s;
-      });
-    flip(on);
-    (on ? stash(id) : unstash(id)).catch(() => flip(!on));
+    setDeck((d) => [last.listing, ...(d ?? [])]);
+    if (last.voted) undoSwipe(last.listing.id).catch((e) => setError(e.message));
   }
 
   return (
@@ -158,13 +144,7 @@ export default function ListingReel({
         <div className={`absolute right-3 flex flex-col items-center gap-6 ${ABOVE_NAV} mb-[34px]`}>
           <Action icon="thumbsUp" label="Yes" onClick={() => card.current?.fling('right')} disabled={!top} />
           <Action icon="thumbsDown" label="Nope" onClick={() => card.current?.fling('left')} disabled={!top} />
-          <Action
-            icon="saveLg"
-            label={top && stashed.has(top.id) ? 'Stashed' : 'Stash'}
-            pressed={!!top && stashed.has(top.id)}
-            onClick={toggleStash}
-            disabled={!top}
-          />
+          <Action icon="pass" label="Pass" onClick={pass} disabled={!top} />
           <Action icon="undo" label="Back" onClick={undo} disabled={!history.length} />
         </div>
       )}
@@ -178,20 +158,17 @@ function Action({
   label,
   onClick,
   disabled,
-  pressed,
 }: {
   icon: IconName;
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  pressed?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      aria-pressed={pressed}
-      className={`flex flex-col items-center gap-1 transition active:scale-90 disabled:opacity-40 ${pressed ? 'text-accent-soft' : ''}`}
+      className={`flex flex-col items-center gap-1 transition active:scale-90 disabled:opacity-40`}
     >
       <Icon name={icon} />
       <span className={`text-[15px] font-bold`}>{label}</span>
@@ -280,7 +257,7 @@ function SwipeCard({
 
         <motion.span
           style={{ opacity: likeOpacity }}
-          className="absolute top-40 left-6 -rotate-12 rounded-[5px] border-[3px] border-accent-soft px-2 text-3xl font-bold text-accent-soft"
+          className="absolute top-40 left-6 -rotate-12 rounded-[5px] border-[3px] border-accent bg-accent-soft px-2 text-3xl font-bold text-accent"
         >
           YES
         </motion.span>

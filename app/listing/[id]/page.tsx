@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getFloorPlans, getGroupMembers, getMyPin, getMapListings, getStash, stash, unstash, type FloorPlan, type GroupListing, type Pin } from '@/lib/api';
+import { getFloorPlans, getGroupMembers, getMyPin, getMapListings, getMySwipes, swipe, undoSwipe, type FloorPlan, type GroupListing, type Pin } from '@/lib/api';
 import { money, specs, area, miles, milesBetween } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import PhotoCarousel from '@/components/PhotoCarousel';
@@ -16,7 +16,7 @@ export default function ListingDetailPage() {
   const [plans, setPlans] = useState<FloorPlan[]>([]);
   const [pin, setPin] = useState<Pin | null>(null);
   const [size, setSize] = useState(0);
-  const [stashed, setStashed] = useState(false);
+  const [liked, setLiked] = useState(false);
   const [booking, setBooking] = useState<GroupListing | null>(null);
 
   useEffect(() => {
@@ -27,13 +27,14 @@ export default function ListingDetailPage() {
     }).catch(() => setListing(null));
     getGroupMembers().then((m) => setSize(m.length)).catch(() => {});
     getMyPin().then(setPin).catch(() => {});
-    getStash().then((ls) => setStashed(ls.some((l) => l.id === id))).catch(() => {});
+    getMySwipes().then((m) => setLiked(m.get(id) === 'right')).catch(() => {});
   }, [id]);
 
-  function toggleStash() {
-    const on = !stashed;
-    setStashed(on);
-    (on ? stash(id) : unstash(id)).catch(() => setStashed(!on));
+  // Your thumbs-up vote, the same as Yes on the reels.
+  function toggleLike() {
+    const on = !liked;
+    setLiked(on);
+    (on ? swipe(id, 'right') : undoSwipe(id)).catch(() => setLiked(!on));
   }
 
   return (
@@ -42,8 +43,8 @@ export default function ListingDetailPage() {
         title="Listing"
         back={{ href: '/picks', label: 'Back', history: true }}
         right={
-          <button onClick={toggleStash} aria-pressed={stashed} className="text-lg font-bold text-accent">
-            {stashed ? 'Stashed' : 'Stash'}
+          <button onClick={toggleLike} aria-pressed={liked} className={`rounded-md border-2 px-2 text-lg font-bold text-accent ${liked ? 'border-accent bg-accent-soft' : 'border-transparent'}`}>
+            {liked ? 'Liked' : 'Like'}
           </button>
         }
       />

@@ -14,12 +14,15 @@ import {
   type Member,
   type Profile,
   FLOCK_NAME,
+  getMyPin,
+  type Pin,
 } from '@/lib/api';
 import { groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
 import { inviteFriends } from '@/lib/share';
 import Avatar from '@/components/Avatar';
 import SettingsRow from '@/components/SettingsRow';
 import Toggle from '@/components/Toggle';
+import PinSheet from '@/components/PinSheet';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
 import { flockScore as score } from '@/lib/compare';
@@ -34,9 +37,15 @@ export default function GroupPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [pin, setPin] = useState<Pin | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
   const [chatWith, setChatWith] = useState<Member | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getMyPin().then(setPin).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fail = (e: Error) => setError(e.message);
@@ -248,6 +257,7 @@ export default function GroupPage() {
             onClick={() => setPrefsOpen(true)}
           />
           <SettingsRow label="Pets" value={prefs.pets ? 'Required' : 'Not needed'} onClick={() => setPrefsOpen(true)} />
+          <SettingsRow label="Commute pin" value={pin ? pin.label ?? 'Set' : 'Not set'} onClick={() => setPinOpen(true)} />
         </>
       ) : (
         <div className="mx-4 h-40 animate-pulse rounded-[5px] bg-surface" />
@@ -264,6 +274,7 @@ export default function GroupPage() {
           getMapListings().then(setListings).catch(() => {});
         }}
       />
+      <PinSheet open={pinOpen} onClose={() => setPinOpen(false)} onSaved={setPin} />
       <MessageSheet member={chatWith} onClose={() => setChatWith(null)} />
 
       <AnimatePresence>
