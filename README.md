@@ -41,7 +41,7 @@ The schema, demo data and row-level security live in `supabase/` so anyone can r
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>
-supabase db push                                   # applies every file in supabase/migrations in order (0001 to 0011)
+supabase db push                                   # applies every file in supabase/migrations in order (0001 to 0013)
 psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQL editor; see below
 ```
 
@@ -65,7 +65,8 @@ The schema file was reconstructed from `lib/api.ts` and the live data, not dumpe
 Migration `0008_flocks.sql` turns the single hard-coded group into flocks: `flocks` (friends or open, any size from 2 up via
 `max_size`), `flock_members` with a status (invited, requested, active, declined, left), votes scoped to a flock
 (`swipes.flock_id`), the `flock_votes` view, `public_profiles` (discoverable people, no budget or habits), and tables for
-`proposals`, `flock_feedback` and `agent_runs`. `create_flock()` and `join_flock()` are database functions; join takes a row
+`proposals`, `flock_feedback` and `agent_runs`. `create_flock()`, `join_flock()`, `set_flock_open()` and `answer_join_request()` are database functions. An open flock is listed in
+Find a flock; people send a request (`join_flock`) and an admin approves it (no screen for that yet). Approval takes a row
 lock, so two people can never take the last seat. The API routes `POST /api/flocks` and `POST /api/flocks/[id]/join` call them
 with the caller's access token (`Authorization: Bearer ...`).
 

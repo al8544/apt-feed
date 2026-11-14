@@ -29,7 +29,7 @@ for (const [key, p] of Object.entries({
 })) {
   const id = randomUUID(), email = `t6-${tag}-${key}@example.test`, password = randomUUID();
   must(await admin.auth.admin.createUser({ id, email, password, email_confirm: true }), `create ${key}`);
-  must(await admin.from('profiles').insert({ id, username: `t6_${tag}_${key}`, display_name: `T6 ${key}`, is_demo: false, discoverable: key === 'd', ...p }), `profile ${key}`);
+  must(await admin.from('profiles').upsert({ id, username: `t6_${tag}_${key}`, display_name: `T6 ${key}`, is_demo: false, discoverable: key === 'd', ...p }), `profile ${key}`);
   const c = createClient(st.API_URL, st.ANON_KEY, opts);
   const s = must(await c.auth.signInWithPassword({ email, password }), `sign in ${key}`);
   people[key] = { id, db: createClient(st.API_URL, st.ANON_KEY, { ...opts, global: { headers: { Authorization: `Bearer ${s.session.access_token}` } } }) };
@@ -44,13 +44,14 @@ try {
   let races = 0, bad = 0;
   for (let i = 0; i < 25; i++) {
     const f = await make(a, { p_name: `race ${i}`, p_kind: 'open', p_open_to_join: true, p_max_size: 2 }); // creator + ONE open seat
-    const [r1, r2] = await Promise.all([join(b, f), join(c, f)]);
+    await Promise.all([join(b, f), join(c, f)]);   // both send a request; the admin then answers both at once
+    const [r1, r2] = await Promise.all([b, c].map((p) => a.db.rpc('answer_join_request', { p_flock_id: f, p_user_id: p.id, p_approve: true })));
     const got = [r1.data, r2.data].sort().join(',');
-    races++; if (got !== 'full,joined') { bad++; console.log('   round', i, got, r1.error?.message ?? '', r2.error?.message ?? ''); }
+    races++; if (got !== 'approved,full') { bad++; console.log('   round', i, got, r1.error?.message ?? '', r2.error?.message ?? ''); }
     const n = must(await admin.from('flock_members').select('user_id').eq('flock_id', f).eq('status', 'active'), 'count');
     if (n.length !== 2) { bad++; console.log('   round', i, 'active members', n.length); }
   }
-  check(bad === 0, `${races} races for the last seat: exactly one joined, one was told full, never over max_size`);
+  check(bad === 0, `${races} races for the last seat: the admin approves one and the other is told full, never over max_size`);
 
   const secret = await make(a, { p_name: 'private', p_kind: 'friends' });
   must(await a.db.from('swipes').insert({ user_id: a.id, listing_id: must(await admin.from('listings').select('id').limit(1), 'listing')[0].id, flock_id: secret, direction: 'right' }), 'swipe');
@@ -76,12 +77,17 @@ try {
   check((await join(b, friends)).data === 'already_member', 'joining twice is harmless');
 
   const rules = await make(a, { p_name: 'rules', p_kind: 'open', p_open_to_join: true, p_join_rules: { budget: true }, p_filters: { budget_min: 3000 } });
-  check((await join(c, rules)).data === 'requested', 'a budget that fails the owner\'s rule becomes a request, not a membership');
-  check((await join(b, rules)).data === 'joined', 'a budget that passes joins instantly');
+  check((await join(c, rules)).data === 'mismatch', 'a budget that fails the owner\'s rule cannot send a request');
+  check((await join(b, rules)).data === 'requested', 'a budget that passes sends a request, not a membership');
+  check((await b.db.rpc('answer_join_request', { p_flock_id: rules, p_user_id: b.id, p_approve: true })).error?.code === '42501', 'only an admin can approve a request');
+  check((await a.db.rpc('answer_join_request', { p_flock_id: rules, p_user_id: b.id, p_approve: true })).data === 'approved', 'an admin approves the request and the person becomes a member');
+  await a.db.rpc('set_flock_open', { p_flock_id: rules, p_open: false });
+  check((await join(d, rules)).data === 'closed', 'a closed flock takes no requests');
+  check((await c.db.rpc('set_flock_open', { p_flock_id: rules, p_open: true })).error?.code === '42501', 'only an admin can open or close a flock');
 
   const big = await make(a, { p_name: 'no cap', p_kind: 'open', p_open_to_join: true });
   const results = await Promise.all([b, c, d].map((p) => join(p, big)));
-  check(results.every((r) => r.data === 'joined'), 'a flock with no max_size takes any number of people');
+  check(results.every((r) => r.data === 'requested'), 'a flock with no max_size takes a request from anyone');
   const tiny = await a.db.rpc('create_flock', { p_name: 'solo', p_max_size: 1 });
   check(!!tiny.error, 'a flock of fewer than 2 is refused');
 

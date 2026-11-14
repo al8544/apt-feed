@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   CURRENT_USER_ID,
+  getFlockOpen,
   getGroupMembers,
   getMapListings,
   getProfile,
+  setFlockOpen,
   subscribeToGroupSwipes,
   type GroupListing,
   type Member,
@@ -17,6 +19,7 @@ import { groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
 import { inviteFriends } from '@/lib/share';
 import Avatar from '@/components/Avatar';
 import SettingsRow from '@/components/SettingsRow';
+import Toggle from '@/components/Toggle';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
 import { flockScore as score } from '@/lib/compare';
@@ -33,12 +36,14 @@ export default function GroupPage() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [chatWith, setChatWith] = useState<Member | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [open, setOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fail = (e: Error) => setError(e.message);
     getGroupMembers().then(setMembers).catch((e) => (fail(e), setMembers([])));
     getMapListings().then(setListings).catch((e) => (fail(e), setListings([])));
     getProfile().then(setMe).catch(fail);
+    getFlockOpen().then(setOpen).catch(fail);
 
     // Live: when anyone in the flock votes, refresh the rankings and the member counts without a reload.
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -61,6 +66,15 @@ export default function GroupPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const toggleOpen = async (next: boolean) => {
+    setOpen(next);
+    try {
+      await setFlockOpen(next);
+    } catch (e) {
+      setOpen(!next);
+      setError((e as Error).message);
+    }
+  };
   const invite = async () => setToast(await inviteFriends(FLOCK_NAME));
 
   const size = members?.length ?? 0;
@@ -127,6 +141,18 @@ export default function GroupPage() {
           </button>
         </div>
       </section>
+
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[21px] font-bold text-ink">{open ? 'Flock is open' : 'Flock is closed'}</p>
+          <p className="text-[15px] text-muted">
+            {open ? 'Shown in public list · people send a request' : 'Hidden from public list · no requests'}
+          </p>
+        </div>
+        {open !== null && me && members?.find((m) => m.id === me.id)?.role === 'admin' && (
+          <Toggle on={open} onChange={toggleOpen} label="Open to join requests" />
+        )}
+      </div>
 
       {error && <p className="px-4 pt-3 text-[15px] text-danger">{error}</p>}
 
