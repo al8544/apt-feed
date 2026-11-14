@@ -29,7 +29,7 @@ export default function AccountPage() {
     const fail = (e: Error) => setError(e.message);
     getProfile().then(setProfile).catch(fail);
     getAccountStats().then(setStats).catch(fail);
-    getMyPin().then(setPin).catch(fail);
+    getMyPin().then(setPin).catch(() => {}); // optional: a database without the pins migration just shows "Not set"
     getStash().then(setStash).catch((e) => (fail(e), setStash([])));
   }, []);
 

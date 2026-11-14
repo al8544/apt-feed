@@ -10,7 +10,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import { rerunShortlist } from './feedback.ts';
 import { createFlockAgent, threadId } from './flock-agent.ts';
 import { feedbackInput, type AgentEvent } from './schemas.ts';
-import { memoryStore, type Plan } from './store.ts';
+import { memoryStore, supabaseStore, type Plan } from './store.ts';
 import { toEvents } from './stream.ts';
 
 const U = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
@@ -134,4 +134,13 @@ test('the feedback request needs a listing and reasons together, or neither', ()
   assert.ok(!feedbackInput.safeParse({ ...ok, listingId: P(1) }).success);
   assert.ok(!feedbackInput.safeParse({ ...ok, reasons: ['too far'] }).success);
   assert.ok(!feedbackInput.safeParse({ ...ok, listingId: P(1), reasons: ['I just hate it'] }).success, 'only the known reasons');
+});
+
+test('without the pins migration the distance lookup fails quietly instead of failing the feedback request', async () => {
+  const noFunction = { rpc: async () => ({ data: null, error: { message: 'Could not find the function public.flock_pin_distances in the schema cache' } }) };
+  assert.deepEqual([...(await supabaseStore(noFunction as never).distances(FLOCK, [P(1)])).entries()], []);
+  // and the shortlist still updates, using the same-community rule for "too far"
+  const store = seed();
+  await store.recordFeedback(FLOCK, U(1), P(1), 'too far');
+  assert.deepEqual((await rerunShortlist(store, FLOCK)).savedIds, [2, 9, 3, 4].map(P));
 });

@@ -129,8 +129,11 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
     },
     async distances(flockId, ids) {
       if (!ids.length) return new Map();
-      const rows = ok(await db.rpc('flock_pin_distances', { p_flock_id: flockId, p_listing_ids: ids }), 'distances') as { listing_id: string; max_mi: number }[];
-      return new Map(rows.map((r) => [r.listing_id, r.max_mi]));
+      const r = await db.rpc('flock_pin_distances', { p_flock_id: flockId, p_listing_ids: ids });
+      // shortcut: a database without the pins migration (0018) has no such function. Distances are optional, so carry on without them and
+      // "too far" falls back to the same-community rule, instead of failing the whole feedback request.
+      if (r.error) return new Map();
+      return new Map((r.data as { listing_id: string; max_mi: number }[]).map((x) => [x.listing_id, x.max_mi]));
     },
     async feedbackFor(flockId) {
       const rows = ok(await db.from('flock_feedback').select('listing_id, reason').eq('flock_id', flockId).not('listing_id', 'is', null).not('reason', 'is', null), 'feedback') as { listing_id: string; reason: string }[];
