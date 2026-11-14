@@ -41,12 +41,14 @@ The schema, demo data and row-level security live in `supabase/` so anyone can r
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>
-supabase db push                                   # applies 0001, 0002, 0003 in order
+supabase db push                                   # applies every file in supabase/migrations in order (0001 to 0011)
 psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQL editor; see below
 ```
 
 Then copy the project URL and anon key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 Locally: `supabase start` and `supabase db reset` rebuild everything from these files.
+
+**Google Maps (local):** put `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAP_ID` in `.env.local` (git-ignored). `npm run dev:local` reads them. Keep the app on port 3000, where the key is allowed.
 
 **Until sign-in exists** the app acts as whichever person the switcher picks, using only the anon key, so with
 strict RLS it would see nothing. For demos, apply `supabase/dev-open-access.sql` after the migrations. It

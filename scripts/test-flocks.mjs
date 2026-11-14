@@ -68,6 +68,8 @@ try {
 
   // ---- the rest of the behavior ----
   const friends = await make(a, { p_name: 'friends only', p_kind: 'friends' });
+  const alone = (await a.db.from('flock_members').select('user_id, status').eq('flock_id', friends)).data ?? [];
+  check((await a.db.from('flocks').select('id').eq('id', friends)).data?.length === 1 && alone.length === 1 && alone[0].user_id === a.id && alone[0].status === 'active', 'a new flock exists at once, with only its creator active, before anyone accepts');
   check((await join(b, friends)).data === 'closed', 'a stranger cannot join a friends flock');
   must(await admin.from('flock_members').insert({ flock_id: friends, user_id: b.id, status: 'invited', joined_via: 'invite' }), 'invite');
   check((await join(b, friends)).data === 'joined', 'an invited person joining accepts the invite');

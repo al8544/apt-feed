@@ -1,0 +1,15 @@
+{
+  "0": "Account & Compare Pages",
+  "1": "Listing & Picks Flow",
+  "2": "App Shell & Styling",
+  "3": "Package Dependencies & Lint",
+  "5": "Product Concept & Agents",
+  "6": "Compare Preferences",
+  "7": "CoStar Data Ingest",
+  "10": "TypeScript Config",
+  "11": "Map Data Model",
+  "12": "Supabase Security & Schema",
+  "14": "Listing Cards Schema",
+  "15": "Icon Components",
+  "16": "Agent Rules Docs"
+}

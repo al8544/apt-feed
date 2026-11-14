@@ -44,12 +44,12 @@ Tags used below: **[built]** exists in code today · **[figma]** designed, not i
 
 | | Friends flock | Open flock |
 |---|---|---|
-| How people join | Invite → accept | Anyone whose profile passes the owner's rules can join; others request |
+| How people join | The creator is in at once; invitees join when they accept | Anyone whose profile passes the owner's rules can join; others request |
 | Setup prompts | Short, filter-based (budget, beds, areas, move-in) | Longer, free text: about the flock, about you, who you want, dealbreakers |
 | Why | You already know each other | Strangers need to know who they are living with |
 | Private details | Visible to members | Public profile = bio + prefs only; full profile only after joining |
 
-A third origin is **agent-proposed**: the agent suggests a group of compatible people; everyone must accept before the flock exists.
+A flock a person creates exists as soon as they create it, with them as its only active member (admin). Invitees are added as they accept, so a flock with no acceptances yet still exists and shows in Your flocks. A third origin is **agent-proposed**: the agent suggests a group of compatible people; everyone must accept before the flock exists.
 
 **Flocks are any size from 2 up.** Three is fine; nothing in the product or the math assumes four.
 
@@ -239,6 +239,8 @@ create table aerial_queries (           -- cache of Vexcel semantic searches, on
 
 **Status (T6, built and tested on a local database only):** `supabase/migrations/0008_flocks.sql`. Differences from the sketch below: `groups` and `group_members` were renamed (not new tables) to `flocks` and `flock_members`; `flock_members.status` defaults existing rows to `active`; `swipes.flock_id` is backfilled from membership and the migration refuses to run if someone swiped without being in any flock; `flock_votes` also exposes `likes` and `liked_by` so `lib/api.ts` reads it as it read `group_likes`; `flocks.discoverable` was added; `listing_comments` and `shortlist` are not built yet. `join_flock` returns a status text (`joined`, `requested`, `full`, `closed`, `already_member`) and its rule check (`flock_rules_ok`) is deliberately basic until `compat()` (T7) replaces it. `scripts/test-flocks.mjs` races two joins for the last seat 25 times and checks that non-members read nothing.
 
+**Status (T9 and T10, local database only):** sign-up and sign-in. `0009_auth.sql` adds the `handle_new_user` trigger that creates a `profiles` row for each new account, and `0011_backfill_profiles.sql` gives existing accounts one (`flocks.created_by` is a foreign key to `profiles`, so a missing row fails the insert). `0010_flock_rules.sql` makes `flock_rules_ok` mirror `lib/match/compat.ts` and adds `leave_flock`. Create a flock: the creator is its only active admin, so it exists and shows in Your flocks with "1 flockmate" until someone accepts. After a Friends flock is created the app opens `/invite`, which now ends with a line saying the flock is ready and a **Start hunting** button to `/`. The Figma `05b Invite Friends` frame matches (button and line below Waiting to join; the content frame runs down to the tab bar). Still open: `/invite`, `/flocks`, `/group`, `/map` and `/` log Next.js "dropped segment" instant-navigation errors (only `/flocks/new` has its Suspense boundary, in the page file).
+
 ```sql
 alter table profiles
   add column if not exists budget_max int,            -- max monthly rent SHARE this person accepts
@@ -309,8 +311,8 @@ create table proposal_members (
   response text check (response in ('pending','accepted','declined')) default 'pending',
   primary key (proposal_id, user_id)
 );
--- A proposal becomes a flock when every invitee has accepted. If someone declines, the people who
--- accepted are asked "continue as a smaller flock?" (minimum 2).
+-- An agent-proposed group becomes a flock when every invitee has accepted. If someone declines, the people who
+-- accepted are asked "continue as a smaller flock?" (minimum 2). Flocks a user creates do not wait (see §2.2).
 
 create table listing_comments (flock_id uuid, user_id uuid, listing_id uuid, body text, created_at timestamptz default now());
 
@@ -713,7 +715,7 @@ export const DucktectResult = z.object({
 | `POST /api/agent/feedback` | After a thumbs-down: reason chip → short `process_feedback` task; also run on membership changes |
 | `POST /api/proposals/[id]/respond` | Accept or decline an agent-proposed group; creates the flock when all accept |
 | `POST /api/ducktect` | Read-only agent for the search bar's "Ducktect best option"; streams steps, returns ranked picks |
-| `POST /api/flocks` | Create flock (friends/open) with validation |
+| `POST /api/flocks` | Create flock (friends/open) with validation. The creator is an active admin in the same transaction, whether or not anyone else has accepted yet |
 | `POST /api/flocks/[id]/join` | Calls the `join_flock` database function (one transaction: lock, rules, `max_size`) |
 | `POST /api/flocks/[id]/invites` | Invite by username/email |
 | `GET /api/flocks/discover` | Open flocks ranked by compatibility with the caller |

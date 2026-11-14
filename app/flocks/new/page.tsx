@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createFlock, selectFlock, updatePreferences } from '@/lib/api';
 import { BEDROOMS, BUDGETS, LA_AREAS } from '@/lib/flocks';
@@ -10,7 +10,16 @@ import Toggle from '@/components/Toggle';
 type Step = 'type' | 'friends' | 'open-about' | 'open-rules';
 
 // Figma 00e (type) → 00f (friends) or 00g → 00h (open). One page, steps in state.
+// The ?type= read happens in the form, so the form sits behind its own Suspense boundary.
 export default function NewFlockPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh animate-pulse bg-surface" />}>
+      <NewFlockForm />
+    </Suspense>
+  );
+}
+
+function NewFlockForm() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(useSearchParams().get('type') === 'open' ? 'open-about' : 'type');
   const [name, setName] = useState('');
@@ -27,7 +36,9 @@ export default function NewFlockPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => window.scrollTo(0, 0), [step]); // each step starts at the top
+  useEffect(() => {
+    window.scrollTo(0, 0); // each step starts at the top
+  }, [step]);
 
   const [, min, max] = BUDGETS[budget]!;
   const filters = { budget_min: min, budget_max: max, beds, areas, move_in: moveIn || null };
