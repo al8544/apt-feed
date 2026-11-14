@@ -36,7 +36,7 @@ export default function ComparePickPage() {
   }, []);
 
   const inSource = (l: GroupListing) =>
-    source === 'liked' ? l.likes > 0 : source === 'stashed' ? stashed.has(l.id) : toured.has(l.id);
+    source === 'liked' ? l.likes > 0 && !l.removed : source === 'stashed' ? stashed.has(l.id) : toured.has(l.id);
   const shown = (listings ?? [])
     .filter((l) => inSource(l) || picked.includes(l.id))
     .map((l) => ({ l, score: flockScore(l, groupSize) }))

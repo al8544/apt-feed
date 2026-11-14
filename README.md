@@ -75,6 +75,19 @@ node --test lib/flocks.test.ts          # request validation
 The app itself still acts as one flock (`GROUP_ID` in `lib/api.ts`, now sent as `flock_id`) and has no sign-in, so nothing in the UI
 calls the new routes yet (ticket T9). The old `groups`, `group_members` and `group_likes` names are gone.
 
+## Voting and the flock score (ticket T8)
+
+Votes are thumbs up (`direction = 'right'`) or thumbs down (`'left'`), one row per person, place and flock; changing a vote
+updates the row. `flockScore` in `lib/compare.ts` is `round(70 x up / members + 0.3 x fit)`, computed on every read, never stored.
+When thumbs-down reaches half the active members, rounded up (1 of 2, 2 of 3, 2 of 4, 3 of 5), a place leaves the flock's rankings
+and Flock picks and is not suggested again in the deck; any thumbs-down short of that shows a "N down" chip on its card. The group
+and picks screens subscribe to the flock's votes, so another member's vote shows up without a reload.
+
+```bash
+node --test lib/compare.test.ts      # score and removal-rule unit tests
+node scripts/test-votes.mjs          # live-vote integration test (local database, migrations only: supabase db reset first)
+```
+
 ## CoStar listings (ticket T3)
 
 Real Los Angeles floor plans come from the CoStar kit. Put the zip anywhere and set `COSTAR_KIT_ZIP` and

@@ -60,6 +60,12 @@ export default function PickCard({
             ))}
           </div>
           <p className="min-w-0 flex-1 truncate text-[15px] text-muted">{likedByText(listing)}</p>
+          {listing.contested && (
+            // Someone gave it a thumbs-down, but not yet half the flock.
+            <span className="shrink-0 rounded-md bg-surface px-[9px] py-[3px] text-[15px] font-bold text-muted">
+              {listing.down} down
+            </span>
+          )}
           <span className="flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-[9px] py-[3px] text-[15px] font-bold text-accent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/heart.svg" alt="" width={13} height={13} />

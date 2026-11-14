@@ -80,9 +80,10 @@ export default function FlockPicksPage() {
     (on ? stash(id) : unstash(id)).catch(() => flip(!on));
   }
 
-  const unseen = (picks ?? []).filter((p) => !mySwipes.has(p.listing.id));
-  const shown =
-    sort === 'unseen' ? unseen : sort === 'liked' ? [...(picks ?? [])].sort((a, b) => b.listing.likes - a.listing.likes) : picks ?? [];
+  // A place the flock removed (thumbs-down from half the flock, rounded up) is off the active list.
+  const active = (picks ?? []).filter((p) => !p.listing.removed);
+  const unseen = active.filter((p) => !mySwipes.has(p.listing.id));
+  const shown = sort === 'unseen' ? unseen : sort === 'liked' ? [...active].sort((a, b) => b.listing.likes - a.listing.likes) : active;
 
   const chips: [Sort, string][] = [
     ['newest', 'Newest'],
