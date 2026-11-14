@@ -2,11 +2,12 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DEMO, FLOCK_NAME, GROUP_ID, forgetFlock, getAccountStats, getProfile, getStash, leaveFlock, signOut, type Listing, type Profile } from '@/lib/api';
+import { DEMO, FLOCK_NAME, GROUP_ID, forgetFlock, getAccountStats, getMyPin, getProfile, getStash, leaveFlock, signOut, type Listing, type Pin, type Profile } from '@/lib/api';
 import { money, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
+import PinSheet from '@/components/PinSheet';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import UserSwitcher from '@/components/UserSwitcher';
 import Icon from '@/components/Icon';
@@ -21,11 +22,14 @@ export default function AccountPage() {
   const [stash, setStash] = useState<Listing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [pin, setPin] = useState<Pin | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
 
   useEffect(() => {
     const fail = (e: Error) => setError(e.message);
     getProfile().then(setProfile).catch(fail);
     getAccountStats().then(setStats).catch(fail);
+    getMyPin().then(setPin).catch(() => {}); // optional: a database without the pins migration just shows "Not set"
     getStash().then(setStash).catch((e) => (fail(e), setStash([])));
   }, []);
 
@@ -116,7 +120,8 @@ export default function AccountPage() {
 
       <Section label="Privacy">
         <SettingsRow label="Who sees my likes" value="My flock" divider />
-        <SettingsRow label="Location" value="While using" />
+        <SettingsRow label="Location" value="While using" divider />
+        <SettingsRow label="Commute pin" value={pin ? pin.label ?? 'Set' : 'Not set'} onClick={() => setPinOpen(true)} />
       </Section>
 
       <Section label="Support">
@@ -137,6 +142,7 @@ export default function AccountPage() {
         {!DEMO && <SettingsRow label="Log out" danger onClick={async () => (await signOut(), router.replace('/welcome'))} />}
       </Section>
 
+      <PinSheet open={pinOpen} onClose={() => setPinOpen(false)} onSaved={setPin} />
       <PreferencesSheet
         open={editOpen}
         onClose={() => setEditOpen(false)}

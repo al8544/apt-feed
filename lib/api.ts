@@ -114,6 +114,25 @@ async function json<T>(res: Response): Promise<T> {
   return body as T;
 }
 
+export { REASONS as FEEDBACK_REASONS } from './agent/feedback';
+
+// The commute pin: where you travel to most. Private to you (row-level security); the flock only ever gets distances (migration 0018).
+export type Pin = { lat: number; lng: number; label: string | null };
+export async function getMyPin(): Promise<Pin | null> {
+  return (check(await supabase.from('member_pins').select('lat,lng,label').eq('user_id', CURRENT_USER_ID).maybeSingle()) as Pin | null) ?? null;
+}
+export async function setMyPin(pin: Pin): Promise<void> {
+  check(await supabase.from('member_pins').upsert({ user_id: CURRENT_USER_ID, ...pin, updated_at: new Date().toISOString() }));
+}
+export async function clearMyPin(): Promise<void> {
+  check(await supabase.from('member_pins').delete().eq('user_id', CURRENT_USER_ID));
+}
+
+// 02e: after a thumbs-down, tell the agent why. It searches again without what the reasons rule out and updates the flock's shortlist.
+export async function sendFeedback(listingId: string, reasons: string[]): Promise<void> {
+  await json(await authFetch('/api/agent/feedback', { method: 'POST', body: JSON.stringify({ flockId: GROUP_ID, listingId, reasons }) }));
+}
+
 // 00f / 00h: create a flock; the caller becomes its admin. Body is validated by lib/flocks.ts on the server.
 export async function createFlock(body: Record<string, unknown>): Promise<string> {
   return (await json<{ id: string }>(await authFetch('/api/flocks', { method: 'POST', body: JSON.stringify(body) }))).id;

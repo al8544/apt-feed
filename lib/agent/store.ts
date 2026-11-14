@@ -6,7 +6,7 @@ import { combinedBudget } from '../match/rent-split.ts';
 import type { Criterion, FlockNeeds, Listing as MatchListing } from '../match/types.ts';
 
 // communityId, lat and lng are what the aerial check needs (Vexcel looks at a place, not at a floor plan); optional so older callers and tests need none.
-export type Plan = MatchListing & { address: string; baths: number; sqft: number | null; communityName: string | null; communityId?: string | null; lat?: number | null; lng?: number | null };
+export type Plan = MatchListing & { address: string; baths: number; sqft: number | null; communityName: string | null; communityId?: string | null; lat?: number | null; lng?: number | null; distanceMi?: number };
 export type Viewport = { south: number; west: number; north: number; east: number };
 // The person's own real metrics, for Ducktect to reason about their day-to-day life (docs/DESIGN.md §8.9). It is read as the user, so row-level
 // security applies: you only ever get your own profile, and from your flock only what the group shares (its size and combined budget, not anyone's
@@ -35,6 +35,9 @@ export interface AgentStore {
   shortlist(flockId: string): Promise<ShortlistRow[]>;
   invite(flockId: string, username: string): Promise<string>;
   recordFeedback(flockId: string, userId: string, listingId: string, reason: string): Promise<void>;
+  distances(flockId: string, ids: string[]): Promise<Map<string, number>>; // farthest straight-line miles to any member's pin; empty when nobody has set one
+  feedbackFor(flockId: string): Promise<{ listingId: string; reason: string }[]>;
+  retireShortlist(flockId: string, keepIds: string[]): Promise<void>; // the agent's earlier picks that are not in keepIds are marked removed
 }
 
 const COLS = 'id, address, price, beds, baths, sqft, pets, neighborhood, community_id, lat, lng, community:communities(name)';
@@ -124,11 +127,26 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
       ok(await db.from('flock_feedback').insert({ flock_id: flockId, user_id: userId, listing_id: listingId, reason }), 'feedback');
       await db.from('shortlist').update({ status: 'contested' }).eq('flock_id', flockId).eq('listing_id', listingId);
     },
+    async distances(flockId, ids) {
+      if (!ids.length) return new Map();
+      const r = await db.rpc('flock_pin_distances', { p_flock_id: flockId, p_listing_ids: ids });
+      // shortcut: a database without the pins migration (0018) has no such function. Distances are optional, so carry on without them and
+      // "too far" falls back to the same-community rule, instead of failing the whole feedback request.
+      if (r.error) return new Map();
+      return new Map((r.data as { listing_id: string; max_mi: number }[]).map((x) => [x.listing_id, x.max_mi]));
+    },
+    async feedbackFor(flockId) {
+      const rows = ok(await db.from('flock_feedback').select('listing_id, reason').eq('flock_id', flockId).not('listing_id', 'is', null).not('reason', 'is', null), 'feedback') as { listing_id: string; reason: string }[];
+      return rows.map((r) => ({ listingId: r.listing_id, reason: r.reason }));
+    },
+    async retireShortlist(flockId, keepIds) {
+      ok(await db.from('shortlist').update({ status: 'removed' }).eq('flock_id', flockId).eq('added_by', 'agent').not('listing_id', 'in', `(${keepIds.join(',')})`), 'shortlist');
+    },
   };
 }
 
 // In memory, for tests and the offline smoke run.
-export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Partial<UserContext> }): AgentStore & { saved: Map<string, SavedPick>; invited: string[]; feedback: string[]; flocksSeen: string[] } {
+export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Partial<UserContext>; miles?: Record<string, number> }): AgentStore & { saved: Map<string, SavedPick>; invited: string[]; feedback: string[]; flocksSeen: string[] } {
   const saved = new Map<string, SavedPick>(), invited: string[] = [], feedback: string[] = [], flocksSeen: string[] = [];
   return {
     saved, invited, feedback, flocksSeen,
@@ -150,5 +168,8 @@ export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Parti
     async shortlist() { return [...saved.values()].map((p) => ({ listingId: p.listingId, explanation: p.explanation, criteria: p.criteria, status: 'active' })); },
     async invite(_f, username) { invited.push(username); return 'invited'; },
     async recordFeedback(_f, _u, listingId, reason) { feedback.push(`${listingId}:${reason}`); },
+    async distances(_f, ids) { return new Map(ids.filter((id) => seed.miles?.[id] != null).map((id) => [id, seed.miles![id]!])); },
+    async feedbackFor() { return feedback.map((f) => ({ listingId: f.slice(0, f.indexOf(':')), reason: f.slice(f.indexOf(':') + 1) })); },
+    async retireShortlist(_f, keepIds) { for (const id of [...saved.keys()]) if (!keepIds.includes(id)) saved.delete(id); },
   };
 }
