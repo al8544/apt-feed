@@ -66,10 +66,10 @@
     "semantic_hash": "256103b1e349f1ac24c2fc648db4629a"
   },
   "app/map/page.tsx": {
-    "mtime": 1794664214.2805197,
-    "seen": 1794679452.526345,
-    "ast_hash": "1681a3663e148cc419dd807ce9741301",
-    "semantic_hash": "1681a3663e148cc419dd807ce9741301"
+    "mtime": 1794684039.0167773,
+    "seen": 1794687103.204834,
+    "ast_hash": "326b486d1c32ff087af44efff7bba3c8",
+    "semantic_hash": ""
   },
   "app/members/page.tsx": {
     "mtime": 1794653497.9605825,
@@ -186,10 +186,10 @@
     "semantic_hash": "f04baf00a897d6b3979bb3efcc189867"
   },
   "components/MapSearch.tsx": {
-    "mtime": 1794664214.2828233,
-    "seen": 1794679452.5263638,
-    "ast_hash": "555dbd4f763594d745f9575115bef0ba",
-    "semantic_hash": "555dbd4f763594d745f9575115bef0ba"
+    "mtime": 1794683160.4917057,
+    "seen": 1794683517.643944,
+    "ast_hash": "6bb703ae5a4cd6b0ea2d13a982bdd119",
+    "semantic_hash": ""
   },
   "components/MessageSheet.tsx": {
     "mtime": 1794652697.8999577,
@@ -222,10 +222,10 @@
     "semantic_hash": "5805f3023e1b23e4cba66bd05ef2c208"
   },
   "components/PricePill.tsx": {
-    "mtime": 1794652697.8989918,
-    "seen": 1794679452.526369,
-    "ast_hash": "5d8c3f28a40b106bd3cd9b7d9e38d174",
-    "semantic_hash": "5d8c3f28a40b106bd3cd9b7d9e38d174"
+    "mtime": 1794683103.7198849,
+    "seen": 1794683517.644043,
+    "ast_hash": "74d6a3d816a4b4fbc3feb65b9d32ebb2",
+    "semantic_hash": ""
   },
   "components/RankingRow.tsx": {
     "mtime": 1794664214.2837214,
@@ -270,9 +270,9 @@
     "semantic_hash": "18a86aa5af9b3867cab09f0a6af1f5b8"
   },
   "lib/api.ts": {
-    "mtime": 1794680905.3472326,
-    "seen": 1794681567.073906,
-    "ast_hash": "4ae435766b700e2b2c4f2337c2ee4f5f",
+    "mtime": 1794683103.7194345,
+    "seen": 1794683517.644365,
+    "ast_hash": "226456519684bb8bf2fb4da012e7ae56",
     "semantic_hash": ""
   },
   "lib/compare.test.ts": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "docs/DESIGN.md": {
-    "mtime": 1794681537.5275414,
-    "seen": 1794681567.074749,
-    "ast_hash": "df731f8b7c7813ace38222681514bae3",
+    "mtime": 1794686460.1513405,
+    "seen": 1794687103.2064378,
+    "ast_hash": "8a24d46270fe38cf75c3ffa35891a8d1",
     "semantic_hash": ""
   },
   "app/(auth)/layout.tsx": {
@@ -1080,9 +1080,9 @@
     "semantic_hash": ""
   },
   "lib/agent/prompts.ts": {
-    "mtime": 1794680261.4524946,
-    "seen": 1794681567.073811,
-    "ast_hash": "e6374ee29cdda292d781bc49b016db8b",
+    "mtime": 1794686834.0002904,
+    "seen": 1794687103.2055922,
+    "ast_hash": "3d69fb6938c288d78b87ef56c0216a32",
     "semantic_hash": ""
   },
   "lib/agent/run.ts": {
@@ -1092,21 +1092,21 @@
     "semantic_hash": ""
   },
   "lib/agent/schemas.ts": {
-    "mtime": 1794677400.4907973,
-    "seen": 1794679452.526386,
-    "ast_hash": "18cace9299cf0026345c126b5aa1f949",
+    "mtime": 1794682253.7320018,
+    "seen": 1794683517.644342,
+    "ast_hash": "1265877e761d0955c349042fb9644d25",
     "semantic_hash": ""
   },
   "lib/agent/store.ts": {
-    "mtime": 1794677400.4910007,
-    "seen": 1794679452.526387,
-    "ast_hash": "6f8aae4e6585dd7a3ee1ecd002c281d0",
+    "mtime": 1794685837.708558,
+    "seen": 1794687103.205627,
+    "ast_hash": "2699c6854343887c7819ece91eea5cc8",
     "semantic_hash": ""
   },
   "lib/agent/stream.ts": {
-    "mtime": 1794677400.491115,
-    "seen": 1794679452.526388,
-    "ast_hash": "ff874c0eb5aa021fa19ffe00a969ffd6",
+    "mtime": 1794682253.732164,
+    "seen": 1794683517.644344,
+    "ast_hash": "ec29fadec95a9c462463fe8e6006b666",
     "semantic_hash": ""
   },
   "lib/agent/tools/index.ts": {
@@ -1182,21 +1182,21 @@
     "semantic_hash": ""
   },
   "lib/enrich/aerial.ts": {
-    "mtime": 1794681475.768745,
-    "seen": 1794681567.074038,
-    "ast_hash": "2e5bd0bd2f92f18c6cea4458acb3b687",
+    "mtime": 1794686975.5156627,
+    "seen": 1794687103.205864,
+    "ast_hash": "85305541fd7310563228898792e999b1",
     "semantic_hash": ""
   },
   "lib/enrich/vexcel.test.ts": {
-    "mtime": 1794681376.825027,
-    "seen": 1794681567.074077,
-    "ast_hash": "682dc3abb4597a70e1259acbb3100f21",
+    "mtime": 1794686153.8251424,
+    "seen": 1794687103.2059011,
+    "ast_hash": "325895aeb1305061386f88fa604ac6dd",
     "semantic_hash": ""
   },
   "lib/enrich/vexcel.ts": {
-    "mtime": 1794681376.8247814,
-    "seen": 1794681567.0740778,
-    "ast_hash": "894299d6f909848244e4c4d7ca31e3f8",
+    "mtime": 1794686162.6195545,
+    "seen": 1794687103.205902,
+    "ast_hash": "f72bc715ed1f83fa46151f165ab9392b",
     "semantic_hash": ""
   },
   "scripts/enrich-vexcel.ts": {
@@ -1209,6 +1209,108 @@
     "mtime": 1794681505.9510994,
     "seen": 1794681567.0746088,
     "ast_hash": "5b716f54e297629cadaf02ea44693f1e",
+    "semantic_hash": ""
+  },
+  "app/api/ducktect/route.ts": {
+    "mtime": 1794682354.811407,
+    "seen": 1794683517.643119,
+    "ast_hash": "1ecd8d80479921608ee488adc2782c57",
+    "semantic_hash": ""
+  },
+  "components/DucktectPanel.tsx": {
+    "mtime": 1794686136.4693933,
+    "seen": 1794687103.205044,
+    "ast_hash": "c3b85f0f3f9fa1455816549187743368",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-agent.test.ts": {
+    "mtime": 1794686317.9085052,
+    "seen": 1794687103.205513,
+    "ast_hash": "b836fcfc3bdc169ae03787e1dec8aac7",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-agent.ts": {
+    "mtime": 1794686524.3722224,
+    "seen": 1794687103.205515,
+    "ast_hash": "d30282f941866a92287ceeb5e898bb9e",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-notes.test.ts": {
+    "mtime": 1794686975.5178938,
+    "seen": 1794687103.205516,
+    "ast_hash": "040d9d15faaa29ff6f0fb73d9cde992d",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-notes.ts": {
+    "mtime": 1794686975.517271,
+    "seen": 1794687103.205517,
+    "ast_hash": "1fdd0b9ab1bef19897ecf5105bb2fa32",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-run.ts": {
+    "mtime": 1794686112.571262,
+    "seen": 1794687103.205518,
+    "ast_hash": "22f2ba519ab81d513c5c0efe6a3807fe",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-split.test.ts": {
+    "mtime": 1794686542.1428013,
+    "seen": 1794687103.2055192,
+    "ast_hash": "2b9b507d47167b24ddd5c96d662c0d58",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-split.ts": {
+    "mtime": 1794686524.3713562,
+    "seen": 1794687103.2055209,
+    "ast_hash": "aced6e64b51f8198817e02c6461e23e6",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-testkit.ts": {
+    "mtime": 1794686283.1425102,
+    "seen": 1794687103.2055218,
+    "ast_hash": "dbc3285c32ca9c302840ad0cd171d4b1",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect.test.ts": {
+    "mtime": 1794687093.5700853,
+    "seen": 1794687103.205523,
+    "ast_hash": "db4b4c2af3aef9d5985e0a90ac1785f0",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect.ts": {
+    "mtime": 1794686975.5166328,
+    "seen": 1794687103.205524,
+    "ast_hash": "34ab94f7912b0ba0b376972383f886eb",
+    "semantic_hash": ""
+  },
+  "scripts/test-ducktect-api.mjs": {
+    "mtime": 1794686355.2703762,
+    "seen": 1794687103.206351,
+    "ast_hash": "84509488aeda1e894d62c9f78f63f09c",
+    "semantic_hash": ""
+  },
+  "lib/enrich/places.test.ts": {
+    "mtime": 1794686686.8396716,
+    "seen": 1794687103.205898,
+    "ast_hash": "571b58892344f5c1ed7cb9aa125ba407",
+    "semantic_hash": ""
+  },
+  "lib/enrich/places.ts": {
+    "mtime": 1794686975.516049,
+    "seen": 1794687103.2059,
+    "ast_hash": "5fbfd12b9226540f35b91a28d0eb20eb",
+    "semantic_hash": ""
+  },
+  "scripts/ingest-places.ts": {
+    "mtime": 1794685837.7089202,
+    "seen": 1794687103.20629,
+    "ast_hash": "cc9fbbadcbbe0d34b53da4e1b226e294",
+    "semantic_hash": ""
+  },
+  "scripts/test-places.mjs": {
+    "mtime": 1794686573.2313108,
+    "seen": 1794687103.206367,
+    "ast_hash": "2008510ae5c8d9bc1c8476992dc37926",
     "semantic_hash": ""
   },
   "package-lock.json": {

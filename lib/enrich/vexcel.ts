@@ -12,18 +12,44 @@ const BASE_URL = 'https://api.vexcelgroup.com/v2';
 export const DETECT_THRESHOLD = 0.5; // the tutorial's default; lower finds more and noisier objects
 
 // ---------- what a visual phrase can mean ----------
-// Only things aerial imagery can actually show (§6.3). Anything else is "not checkable": say so, never guess.
+// Vexcel's detector is open-vocabulary: it finds anything you can NAME in the imagery. So a wish is not limited to a fixed list: the model may
+// propose any label for something visible from above (a basketball court, solar panels, a rooftop deck, a lawn), and this vets it. What it cannot be:
+// a feeling ("quiet"), something indoors ("natural light", "dishwasher"), or a number ("2 bathrooms"). Whether the detector actually recognises a
+// label is only known by trying it, which is why lib/agent/ducktect.ts flags a label that no place showed.
 const ALIASES: Record<string, string> = {
   pool: 'swimming pool', pools: 'swimming pool', 'swimming pool': 'swimming pool', 'swimming pools': 'swimming pool',
-  'tennis court': 'tennis court', 'tennis courts': 'tennis court', tennis: 'tennis court',
-  'parking lot': 'parking lot', 'parking lots': 'parking lot',
-  'tree cover': 'tree cover', trees: 'tree cover', greenery: 'tree cover', 'tree canopy': 'tree cover', shade: 'tree cover',
+  tennis: 'tennis court', 'tennis courts': 'tennis court', 'basketball courts': 'basketball court', 'parking lots': 'parking lot',
+  'solar panel': 'solar panels', 'rooftop deck': 'rooftop deck', 'roof deck': 'rooftop deck', 'roof terrace': 'rooftop deck',
+  trees: 'tree cover', tree: 'tree cover', greenery: 'tree cover', 'tree canopy': 'tree cover', shade: 'tree cover', 'tree cover': 'tree cover',
+  lawn: 'grass lawn', grass: 'grass lawn', lawns: 'grass lawn', 'green lawn': 'grass lawn', yard: 'grass lawn', 'back yard': 'grass lawn', backyard: 'grass lawn',
 };
-export const DETECT_PHRASES = ['swimming pool', 'tennis court', 'parking lot'] as const; // found by name on the imagery
-export const ATTRIBUTE_PHRASES = ['tree cover'] as const; // read from the property attributes
-export const normalizePhrase = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-export const canonicalPhrase = (s: string): string | null => ALIASES[normalizePhrase(s)] ?? null;
-export const isDetectPhrase = (p: string) => (DETECT_PHRASES as readonly string[]).includes(p);
+export const ATTRIBUTE_PHRASES = ['tree cover'] as const; // read from the property attributes, not detected
+export const MAX_IMAGERY_LABELS = 3; // each label adds work to the detector; a wish rarely needs more
+export const normalizePhrase = (s: string) => s.toLowerCase().replace(/[^a-z0-9 -]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+const SIZE_WORDS = new Set(['big', 'large', 'huge', 'small', 'tiny', 'nice', 'beautiful', 'private', 'good', 'great', 'lots', 'of', 'a', 'an', 'the', 'some']);
+// Words that make a "visual" phrase a feeling, something indoors, or a number: not a thing the detector can find from above.
+const FEELINGS = new Set([
+  'quiet', 'safe', 'sunny', 'bright', 'walkable', 'cozy', 'modern', 'luxury', 'luxurious', 'clean', 'friendly', 'vibe', 'noise', 'noisy', 'spacious', 'peaceful', 'cheap', 'affordable', 'charming',
+  'rent', 'price', 'deal', 'close', 'near', 'nearby', 'walk', 'neighbors', 'neighborhood', 'pet', 'pets', 'doorman', 'concierge', 'wifi', 'internet', 'heating', 'air', 'conditioning',
+]);
+// Things that live indoors: not visible from above, unless the phrase says it is outside ("outdoor kitchen", "rooftop lounge").
+const INDOOR = new Set(['light', 'view', 'views', 'dishwasher', 'laundry', 'kitchen', 'bedroom', 'bedrooms', 'bathroom', 'bathrooms', 'closet', 'appliances', 'floors', 'flooring', 'carpet', 'inside', 'indoor', 'lounge']);
+const OUTSIDE = new Set(['outdoor', 'outside', 'rooftop', 'roof', 'patio', 'backyard', 'courtyard', 'terrace']);
+
+// The label to hand the detector, or null when the phrase is not something imagery can show.
+export function canonicalPhrase(s: string): string | null {
+  const n = normalizePhrase(s);
+  if (!n) return null;
+  if (ALIASES[n]) return ALIASES[n]!;
+  const words = n.split(' ').filter((w) => !SIZE_WORDS.has(w));
+  const label = words.join(' ');
+  if (!label || ALIASES[label]) return label ? ALIASES[label]! : null;
+  if (words.length > 4 || label.length > 40 || !/[a-z]/.test(label) || /\d/.test(label)) return null;
+  const outside = words.some((w) => OUTSIDE.has(w));
+  return words.some((w) => FEELINGS.has(w) || (INDOOR.has(w) && !outside)) || /^\d/.test(label) ? null : label;
+}
+export const isAttributePhrase = (p: string) => (ATTRIBUTE_PHRASES as readonly string[]).includes(p);
 
 // ---------- geometry ----------
 // WKT is longitude first: POINT(lng lat). The number-one Vexcel mistake is swapping them.

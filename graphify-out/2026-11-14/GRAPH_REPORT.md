@@ -1,28 +1,28 @@
 # Graph Report - apt-feed  (2026-11-14)
 
 ## Corpus Check
-- 141 files · ~74,820 words
+- 165 files · ~96,331 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: .example 1, (none) 1, .ico 1)
 
 ## Summary
-- 896 nodes · 2176 edges · 46 communities (42 shown, 4 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 50 edges (avg confidence: 0.88)
+- 1108 nodes · 2697 edges · 57 communities (52 shown, 5 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 54 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `dc49dc26`
+- Built from commit: `a0704e38`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Account & Compare Pages
+- react
 - discover.ts
 - 5. Data model
 - Package Dependencies & Lint
-- app/layout.tsx
+- map/page.tsx
 - Product Concept & Agents
-- Compare Preferences
+- compare/page.tsx
 - CoStar Data Ingest
 - find/page.tsx
 - listing-fit.ts
@@ -39,14 +39,14 @@
 - media.ts
 - Apartments.com enrichment: permission record
 - AGENTS.md
-- next
-- run.ts
-- map/page.tsx
+- format.ts
+- schemas.ts
+- BookTourSheet.tsx
 - flock-agent.ts
-- index.ts
+- ducktect.ts
 - agent.test.ts
 - matcher.ts
-- dependencies
+- picks/page.tsx
 - demo-agent.mjs
 - @supabase/supabase-js
 - test-flocks.mjs
@@ -56,34 +56,45 @@
 - test-agent-db.mjs
 - apartments-com.ts
 - groupMatch
-- store.ts
+- group/page.tsx
 - proxy.ts
-- scripts
+- vexcel.ts
 - 6. Data sources
 - 2. Product scope
 - ref_node_child_process
+- enrich-vexcel.ts
+- aerial.ts
+- api.ts
+- test-aerial.mjs
+- ducktect-split.ts
+- ducktect-run.ts
+- vexcel.test.ts
+- Avatar
+- AerialStore
+- test-ducktect-api.mjs
+- getGroupMembers
 
 ## God Nodes (most connected - your core abstractions)
-1. `react` - 42 edges
-2. `next` - 36 edges
-3. `check()` - 33 edges
-4. `money()` - 28 edges
-5. `Avatar()` - 26 edges
-6. `getGroupMembers()` - 25 edges
-7. `area()` - 25 edges
-8. `Button()` - 24 edges
+1. `react` - 44 edges
+2. `next` - 37 edges
+3. `check()` - 34 edges
+4. `money()` - 30 edges
+5. `Avatar()` - 25 edges
+6. `area()` - 25 edges
+7. `Button()` - 24 edges
+8. `getGroupMembers()` - 23 edges
 9. `GroupPage()` - 21 edges
 10. `ListingPhoto()` - 21 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `8.9 Ducktect best option (search bar)` --references--> `matchesQuery()`  [INFERRED]
-  docs/DESIGN.md → components/MapFiltersSheet.tsx
-- `6.2 Apartments.com images and details — enrichment **[built, deliberately unused]**` --references--> `parse()`  [INFERRED]
-  docs/DESIGN.md → lib/enrich/apartments-com.ts
 - `7.4 Roommate compatibility, open-flock joining, privacy` --references--> `compat()`  [INFERRED]
   docs/DESIGN.md → lib/match/compat.ts
 - `10. Auth, consent, security` --references--> `requireUser()`  [INFERRED]
   docs/DESIGN.md → lib/server/auth.ts
+- `6.2 Apartments.com images and details — enrichment **[built, deliberately unused]**` --references--> `parse()`  [INFERRED]
+  docs/DESIGN.md → lib/enrich/apartments-com.ts
+- `8.9 Ducktect best option (search bar)` --references--> `matchesQuery()`  [INFERRED]
+  docs/DESIGN.md → components/MapFiltersSheet.tsx
 - `5.1 Property data (from the CoStar kit)` --references--> `groupMatch()`  [INFERRED]
   docs/DESIGN.md → lib/api.ts
 
@@ -95,11 +106,11 @@
 - **Flock agent team** — docs_design_deep_agent, docs_design_orchestrator, docs_design_roommate_matcher, docs_design_apartment_searcher, docs_design_aerial_evidence [INFERRED 0.85]
 - **Listing data sources** — docs_design_costar_kit, docs_design_apartments_com, docs_design_vexcel, scripts_ingest_costar [INFERRED 0.85]
 
-## Communities (46 total, 4 thin omitted)
+## Communities (57 total, 5 thin omitted)
 
-### Community 0 - "Account & Compare Pages"
-Cohesion: 0.05
-Nodes (97): AccountPage(), Section(), Stats, summary(), YourFlocksPage(), load(), GroupPage(), SectionHeader() (+89 more)
+### Community 0 - "react"
+Cohesion: 0.10
+Nodes (17): AccountPage(), Section(), Stats, PreferencesSheet(), Prefs, PrefsForm(), save(), SettingsRow() (+9 more)
 
 ### Community 1 - "discover.ts"
 Cohesion: 0.12
@@ -110,32 +121,32 @@ Cohesion: 0.40
 Nodes (5): 5.1 Property data (from the CoStar kit), 5.2 Media and enrichment, 5.3 People, flocks, decisions, 5.4 Row-level security (sketch), 5. Data model
 
 ### Community 3 - "Package Dependencies & Lint"
-Cohesion: 0.12
-Nodes (21): eslintConfig, devDependencies, eslint@^9, eslint-config-next@16.4.6, tailwindcss@4.3.3, @tailwindcss/turbopack@4.3.3, @types/node@^20, @types/react@^19 (+13 more)
+Cohesion: 0.06
+Nodes (41): eslintConfig, dependencies, @langchain/core@^1.4.1, @langchain/openai@^1.8.4, next@16.4.6, react@19.3.0, react-dom@19.3.0, @supabase/ssr@^0.12.7 (+33 more)
 
-### Community 4 - "app/layout.tsx"
-Cohesion: 0.31
-Nodes (6): gaegu, metadata, RootLayout(), viewport, BottomNav(), MotionProvider()
+### Community 4 - "map/page.tsx"
+Cohesion: 0.06
+Nodes (50): CENTER, CHIPS, DucktectMapEffects(), LatLng, LocateButton(), MapPage(), startDucktect(), Ducktective() (+42 more)
 
 ### Community 5 - "Product Concept & Agents"
 Cohesion: 0.06
 Nodes (29): aerial-evidence subagent, apartment-searcher subagent, Apartments.com image enrichment, compat() roommate compatibility, CoStar data kit, CoStar track (Inside and Out), Flock Deep Agent (deepagents), Two-minute demo (+21 more)
 
-### Community 6 - "Compare Preferences"
-Cohesion: 0.11
-Nodes (33): ALL_KEYS, Cell(), ComparePage(), DEFAULT_PREFS, loadPrefs(), MetricsSheet(), Prefs, prefsKey() (+25 more)
+### Community 6 - "compare/page.tsx"
+Cohesion: 0.06
+Nodes (48): ALL_KEYS, Cell(), ComparePage(), DEFAULT_PREFS, loadPrefs(), MetricsSheet(), Prefs, prefsKey() (+40 more)
 
 ### Community 7 - "CoStar Data Ingest"
 Cohesion: 0.09
 Nodes (17): after, args, before, communities, counts, db, flag(), idByProperty (+9 more)
 
 ### Community 8 - "find/page.tsx"
-Cohesion: 0.05
-Nodes (61): POST(), SignInPage(), submit(), SignUpPage(), submit(), WelcomePage(), Basics(), save() (+53 more)
+Cohesion: 0.07
+Nodes (57): SignInPage(), submit(), SignUpPage(), submit(), WelcomePage(), Basics(), save(), FindFlockPage() (+49 more)
 
 ### Community 9 - "listing-fit.ts"
-Cohesion: 0.16
-Nodes (19): closestMisses(), fit(), Miss, money(), same(), activeMembers(), apportion(), bedroomsNeeded() (+11 more)
+Cohesion: 0.09
+Nodes (29): processFeedbackInput, rankApartmentsInput, searchApartmentsInput, updateShortlistInput, AgentStore, ctxOf(), explain(), fact() (+21 more)
 
 ### Community 10 - "TypeScript Config"
 Cohesion: 0.10
@@ -170,52 +181,52 @@ Cohesion: 0.18
 Nodes (10): Check row-level security, Load the LA data (from an empty or freshly reset database), Local test database, Rebuild from scratch, Run the app against it, Start, Stop, Test the agent (+2 more)
 
 ### Community 20 - "media.ts"
-Cohesion: 0.23
-Nodes (6): photoUrl(), KitAttachment, pickGallery(), PRIORITY, isBlocked(), sameImage()
+Cohesion: 0.33
+Nodes (5): photoUrl(), KitAttachment, pickGallery(), PRIORITY, sameImage()
 
 ### Community 21 - "Apartments.com enrichment: permission record"
 Cohesion: 0.40
 Nodes (4): Apartments.com enrichment: permission record, Evidence (fill in; the approval was verbal, so write down where it is), Limits we keep regardless, What was approved
 
-### Community 23 - "next"
-Cohesion: 0.07
-Nodes (61): ComparePickPage(), Source, SOURCES, ListingDetailPage(), toggleStash(), dist(), MapListingPage(), MapPage() (+53 more)
+### Community 23 - "format.ts"
+Cohesion: 0.20
+Nodes (21): StashPage(), ListingCard(), gradientFor(), GRADIENTS, ListingPhoto(), CardHandle, Direction, SwipeCard() (+13 more)
 
-### Community 24 - "run.ts"
-Cohesion: 0.17
-Nodes (16): maxDuration, POST(), maxDuration, POST(), POST(), POST(), createFlockAgent(), threadId() (+8 more)
-
-### Community 25 - "map/page.tsx"
+### Community 24 - "schemas.ts"
 Cohesion: 0.11
-Nodes (26): summary(), CENTER, CHIPS, LatLng, LocateButton(), Ducktective(), LOOP, applyFilters() (+18 more)
+Nodes (26): maxDuration, POST(), maxDuration, POST(), maxDuration, POST(), POST(), POST() (+18 more)
+
+### Community 25 - "BookTourSheet.tsx"
+Cohesion: 0.13
+Nodes (29): TourDetailPage(), rsvp(), addedMessage(), PickListingSheet(), ToursPage(), WEEKDAYS, WeekGrid(), AGENTS (+21 more)
 
 ### Community 26 - "flock-agent.ts"
-Cohesion: 0.11
-Nodes (20): checkpointer, DEFAULT_MODEL, FLOCK_PROMPT, SEARCHER_PROMPT, deepagents@^1.16.5, langchain@^1.6.6, @langchain/core@^1.4.1, zod@^4.6.7 (+12 more)
+Cohesion: 0.10
+Nodes (26): interpretation, json(), DucktectSession, checkpointer, DEFAULT_MODEL, DUCKTECT_AERIAL_PROMPT, DUCKTECT_PROMPT, DUCKTECT_SEARCHER_PROMPT (+18 more)
 
-### Community 27 - "index.ts"
-Cohesion: 0.15
-Nodes (14): AgentContext, askInput, contextSchema, processFeedbackInput, rankApartmentsInput, searchApartmentsInput, sendInvitesInput, updateShortlistInput (+6 more)
+### Community 27 - "ducktect.ts"
+Cohesion: 0.12
+Nodes (25): ALSO_CONSIDERED, Candidate, CANDIDATE_CAP, Constraint, DucktectEnv, MAX_PICKS, newSession(), COM() (+17 more)
 
 ### Community 28 - "agent.test.ts"
-Cohesion: 0.16
-Nodes (14): cfg(), collect(), FLOCK, P(), plan(), seed(), U(), AgentEvent (+6 more)
+Cohesion: 0.12
+Nodes (17): cfg(), collect(), FLOCK, P(), plan(), seed(), U(), DUCKTECT_TOOL_NAMES (+9 more)
 
 ### Community 29 - "matcher.ts"
 Cohesion: 0.16
 Nodes (15): inventedNumbers(), norm(), Analyze, analyzeFlocks(), buildPrompt(), Candidate, clean(), FALLBACK_REASON (+7 more)
 
-### Community 30 - "dependencies"
-Cohesion: 0.12
-Nodes (16): dependencies, framer-motion@^14.14.0, @langchain/langgraph@^1.7.4, @langchain/openai@^1.8.4, lucide-react@^1.72.0, next@16.4.6, react@19.3.0, react-dom@19.3.0 (+8 more)
+### Community 30 - "picks/page.tsx"
+Cohesion: 0.14
+Nodes (29): ListingDetailPage(), toggleStash(), dist(), MapListingPage(), badge(), FlockPicksPage(), toggleStash(), Pick (+21 more)
 
 ### Community 31 - "demo-agent.mjs"
 Cohesion: 0.20
 Nodes (9): readEvents(), admin, flock, opts, people, post(), st, tag (+1 more)
 
 ### Community 32 - "@supabase/supabase-js"
-Cohesion: 0.17
-Nodes (8): @supabase/supabase-js@^2.119.0, @supabase/supabase-js, admin, anon, opts, people, st, tag
+Cohesion: 0.18
+Nodes (6): admin, anon, opts, people, st, tag
 
 ### Community 33 - "test-flocks.mjs"
 Cohesion: 0.17
@@ -235,27 +246,27 @@ Nodes (6): admin, flock, opts, people, st, tag
 
 ### Community 37 - "test-agent-db.mjs"
 Cohesion: 0.20
-Nodes (6): admin, anon, opts, people, st, tag
+Nodes (7): @supabase/supabase-js, admin, anon, opts, people, st, tag
 
 ### Community 38 - "apartments-com.ts"
-Cohesion: 0.50
-Nodes (8): asArray(), httpsUrl(), imageUrls(), isObj(), Json, jsonLdNodes(), MediaItem, parse()
+Cohesion: 0.35
+Nodes (9): asArray(), httpsUrl(), imageUrls(), isBlocked(), isObj(), Json, jsonLdNodes(), MediaItem (+1 more)
 
 ### Community 39 - "groupMatch"
 Cohesion: 0.29
 Nodes (8): 3.1 Gaps between today and the goal, 3. Current state (read from the code), 7.1 Units and the feasibility rule (settled), 7.2 Listing fit (hard constraints, then score), 7.3 Voting and the flock score, 7.4 Roommate compatibility, open-flock joining, privacy, 7. Matching and scoring (pure code, `lib/match/`), groupMatch()
 
-### Community 40 - "store.ts"
-Cohesion: 0.25
-Nodes (6): Needs, Plan, Row, SavedPick, ShortlistRow, Criterion
+### Community 40 - "group/page.tsx"
+Cohesion: 0.19
+Nodes (18): GroupPage(), SectionHeader(), InvitePage(), seen(), seenKey(), SmallerFlockPrompt(), acknowledge(), FLOCK_NAME (+10 more)
 
 ### Community 41 - "proxy.ts"
 Cohesion: 0.33
 Nodes (5): 4.1 Target folder layout, 4. Target architecture, AUTH_PAGES, config, proxy()
 
-### Community 42 - "scripts"
-Cohesion: 0.33
-Nodes (6): scripts, build, dev, dev:local, lint, start
+### Community 42 - "vexcel.ts"
+Cohesion: 0.15
+Nodes (17): C, fakeVexcel(), ALIASES, ATTRIBUTE_PHRASES, DETECT_PHRASES, DETECT_THRESHOLD, DetectSummary, isObj() (+9 more)
 
 ### Community 43 - "6. Data sources"
 Cohesion: 0.40
@@ -265,25 +276,65 @@ Nodes (5): 6.1 CoStar data kit — primary source **[built: T3, verified on a lo
 Cohesion: 0.50
 Nodes (4): 2.1 What a user does, 2.2 Friends flock vs Open flock, 2.3 Voting and cards, 2. Product scope
 
+### Community 46 - "enrich-vexcel.ts"
+Cohesion: 0.12
+Nodes (17): args, budget, buffer, C, db, fetchLive, flag(), maxCalls (+9 more)
+
+### Community 47 - "aerial.ts"
+Cohesion: 0.16
+Nodes (15): aerialEvidence(), Community, DEFAULT_BUFFER_M, Evidence, evidenceFromAttributes(), evidenceFromQuery(), EvidenceOptions, notCheckable() (+7 more)
+
+### Community 48 - "api.ts"
+Cohesion: 0.15
+Nodes (19): MessageSheet(), Thread(), send(), NO_FLOCK_OK(), SessionGate(), DEMO, FlockMatch, forgetFlock() (+11 more)
+
+### Community 49 - "test-aerial.mjs"
+Cohesion: 0.17
+Nodes (10): admin, anon, C, community, imagery, must(), opts, rows() (+2 more)
+
+### Community 50 - "ducktect-split.ts"
+Cohesion: 0.15
+Nodes (19): AREA_CENTERS, areaByName(), areaViewport(), bedsOf(), clean(), dedupe(), Hard, Interpreted (+11 more)
+
+### Community 51 - "ducktect-run.ts"
+Cohesion: 0.19
+Nodes (18): createDucktectAgent(), ducktectModel(), makeDucktectTools(), checkAerial(), explainNothing(), findCandidates(), interpret(), needsFor() (+10 more)
+
+### Community 52 - "vexcel.test.ts"
+Cohesion: 0.25
+Nodes (4): canonicalPhrase(), normalizePhrase(), squareWkt(), checkable
+
+### Community 53 - "Avatar"
+Cohesion: 0.24
+Nodes (14): summary(), YourFlocksPage(), load(), Avatar(), AvatarUser, DUCKS, ProposalCard(), answer() (+6 more)
+
+### Community 55 - "test-ducktect-api.mjs"
+Cohesion: 0.16
+Nodes (10): admin, ask(), flock, LIMIT, opts, people, post(), st (+2 more)
+
+### Community 56 - "getGroupMembers"
+Cohesion: 0.38
+Nodes (7): ComparePickPage(), Source, SOURCES, MembersPage(), NavBar(), getGroupMembers(), getTouredListingIds()
+
 ## Knowledge Gaps
 - **12 isolated node(s):** `communities table`, `Brooklyn-to-LA cutover (ticket T4)`, `Next.js agent rules block`, `Next.js feedback reporting block`, `flock_votes view` (+7 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 306 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 391 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `@supabase/supabase-js` connect `@supabase/supabase-js` to `discover.ts`, `test-flocks.mjs`, `Package Dependencies & Lint`, `test-agent-api.mjs`, `test-agent-db.mjs`, `test-proposals.mjs`, `CoStar Data Ingest`, `store.ts`, `ingest-costar-media.ts`, `enrich-apartments-com.ts`, `run.ts`, `demo-agent.mjs`?**
-  _High betweenness centrality (0.250) - this node is a cross-community bridge._
+- **Why does `@supabase/supabase-js` connect `test-agent-db.mjs` to `@supabase/supabase-js`, `discover.ts`, `test-flocks.mjs`, `Package Dependencies & Lint`, `test-agent-api.mjs`, `test-proposals.mjs`, `CoStar Data Ingest`, `ingest-costar-media.ts`, `enrich-vexcel.ts`, `aerial.ts`, `enrich-apartments-com.ts`, `test-aerial.mjs`, `ducktect-run.ts`, `test-ducktect-api.mjs`, `schemas.ts`, `ducktect.ts`, `demo-agent.mjs`?**
+  _High betweenness centrality (0.217) - this node is a cross-community bridge._
 - **What connects `communities table`, `Brooklyn-to-LA cutover (ticket T4)`, `Next.js agent rules block` to the rest of the system?**
   _12 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Account & Compare Pages` be split into smaller, more focused modules?**
-  _Cohesion score 0.05284147557328016 - nodes in this community are weakly interconnected._
-- **Why does `react` connect `find/page.tsx` to `Account & Compare Pages`, `Package Dependencies & Lint`, `app/layout.tsx`, `Compare Preferences`, `next`, `map/page.tsx`, `dependencies`?**
-  _High betweenness centrality (0.130) - this node is a cross-community bridge._
+- **Should `react` be split into smaller, more focused modules?**
+  _Cohesion score 0.10483870967741936 - nodes in this community are weakly interconnected._
+- **Why does `react` connect `react` to `Package Dependencies & Lint`, `map/page.tsx`, `compare/page.tsx`, `find/page.tsx`, `group/page.tsx`, `api.ts`, `Avatar`, `format.ts`, `getGroupMembers`, `BookTourSheet.tsx`, `picks/page.tsx`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
 - **Should `discover.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.11954022988505747 - nodes in this community are weakly interconnected._
-- **Why does `next` connect `next` to `Account & Compare Pages`, `Package Dependencies & Lint`, `app/layout.tsx`, `Compare Preferences`, `find/page.tsx`, `proxy.ts`, `dependencies`?**
-  _High betweenness centrality (0.096) - this node is a cross-community bridge._
+- **Why does `next` connect `find/page.tsx` to `react`, `Package Dependencies & Lint`, `map/page.tsx`, `compare/page.tsx`, `group/page.tsx`, `proxy.ts`, `api.ts`, `Avatar`, `format.ts`, `getGroupMembers`, `BookTourSheet.tsx`, `picks/page.tsx`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **Should `Package Dependencies & Lint` be split into smaller, more focused modules?**
-  _Cohesion score 0.1225296442687747 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06090808416389812 - nodes in this community are weakly interconnected._
