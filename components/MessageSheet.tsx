@@ -27,7 +27,9 @@ function Thread({ member }: { member: Profile }) {
     });
   }, [member.id]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages]);
+useEffect(() => {
+  bottom.current?.scrollIntoView({ block: 'end' });
+}, [messages]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
