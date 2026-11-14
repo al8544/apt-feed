@@ -1,0 +1,15 @@
+{
+  "_note": "Synthetic: the real response shape recorded from live calls in Nov 2026, with made-up coordinates and values. Nothing was found: a label with no detections has no feature at all.",
+  "type": "FeatureCollection",
+  "images": [
+    {
+      "image-id": "ortho-1",
+      "endpoint": "ortho/extract",
+      "metadata": {
+        "collection": "us-ca-losangeles-2025",
+        "last-capture-date": 1765400614000
+      }
+    }
+  ],
+  "features": []
+}
