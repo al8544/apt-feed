@@ -1,26 +1,20 @@
 @import "tailwindcss";
 
-/* Design tokens — Flock duck palette from the ApartmentHunt Figma file. */
+/* Design tokens — "Flock" theme from the ApartmentHunt Figma file.
+   Old token names are kept (ink, muted, surface, line, accent) so every screen picks up the new palette. */
 @theme {
-  /* palette */
-  --color-tan: #c7a46e;
-  --color-moss: #4c5e40;
-  --color-sage: #668b61;
-  --color-bark: #51382d;
-  --color-walnut: #45270e;
-
-  /* semantic */
-  --color-cream: #fbf6ec;      /* bg/primary */
-  --color-surface: #f1e7d6;    /* bg/secondary */
-  --color-bar: #e6d5b8;        /* bg/bar */
-  --color-ink: #45270e;        /* text/primary */
+  --color-ink: #45270e;        /* text/primary, bg/inverse */
   --color-muted: #7a6352;      /* text/secondary */
+  --color-surface: #f1e7d6;    /* bg/secondary (page) */
+  --color-card: #fbf6ec;       /* bg/primary, text/inverse */
+  --color-bar: #e6d5b8;        /* bg/bar */
   --color-line: #e3d3b8;       /* border */
-  --color-accent: #4c5e40;     /* accent */
+  --color-accent: #4c5e40;     /* accent (moss) */
   --color-accent-soft: #dce6d6;
-  --color-icon-off: #a88450;   /* inactive icons */
+  --color-tan: #c7a46e;        /* palette/tan */
+  --color-faded: #a88450;      /* inactive tab icons */
   --color-danger: #a4472c;
-  --color-match: #8fb287;
+  --color-match: #4c5e40;
 }
 
 @theme inline {
@@ -30,8 +24,6 @@
 body {
   background: var(--color-surface);
   color: var(--color-ink);
-  /* Gaegu has a small x-height; match it to a regular UI font so sizes read as designed. */
-  font-size-adjust: 0.52;
 }
 
 .no-scrollbar {
@@ -41,38 +33,43 @@ body {
   display: none;
 }
 
-/* Hand-made edges: the fill is drawn on a pseudo-element run through the #rough SVG
-   filter (defined in app/layout.tsx), so text and icons inside stay crisp.
-   In the components layer so utilities like `fixed`/`absolute` still win over `relative`. */
-@layer components {
-  .rough {
-    position: relative;
-    isolation: isolate;
-    background: transparent;
-  }
-  .rough::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background: var(--rough-fill, var(--color-cream));
-    filter: url(#rough);
-  }
-  .rough-cream { --rough-fill: var(--color-cream); }
-  .rough-surface { --rough-fill: var(--color-surface); }
-  .rough-bar { --rough-fill: var(--color-bar); }
-  .rough-ink { --rough-fill: var(--color-ink); }
-  .rough-accent { --rough-fill: var(--color-accent); }
-  .rough-soft { --rough-fill: var(--color-accent-soft); }
+/* "Rough Fill": hand-drawn edge. Put the color in --fill; the filter is defined once in app/layout.tsx.
+   The fill sits on ::before so text and children stay crisp.
+   This file's CSS is unlayered (it beats Tailwind utilities), so leave elements that set their own position alone. */
+.rough {
+  isolation: isolate;
+}
+.rough:not(.fixed, .absolute, .sticky) {
+  position: relative;
+}
+.rough::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--fill, var(--color-card));
+  filter: url(#rough);
+  pointer-events: none;
 }
 
-/* Drawn icons are single-color PNGs used as masks, so they take the text color. */
-.drawn-icon {
-  display: inline-block;
-  flex-shrink: 0;
-  background-color: currentColor;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
+/* Price range knobs (Map filters): only the thumbs take pointer events so both inputs stay draggable. */
+.range-knob::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 2.5px solid var(--color-ink);
+  cursor: grab;
+}
+.range-knob::-moz-range-thumb {
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-card);
+  border: 2.5px solid var(--color-ink);
+  cursor: grab;
 }

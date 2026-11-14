@@ -1,7 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
 import { getAccountStats, getProfile, getStash, type Listing, type Profile } from '@/lib/api';
 import { GROUP_NAME, money } from '@/lib/format';
 import Avatar from '@/components/Avatar';
@@ -9,7 +7,8 @@ import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import UserSwitcher from '@/components/UserSwitcher';
-import DrawnIcon from '@/components/DrawnIcon';
+import Icon from '@/components/Icon';
+import NavBar from '@/components/NavBar';
 
 type Stats = { swipes: number; stashed: number; tours: number };
 
@@ -30,49 +29,43 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-dvh bg-surface pb-6">
-      <nav className="relative flex h-11 items-center justify-center mt-[env(safe-area-inset-top)]">
-        <Link href="/group" className="absolute left-2 flex items-center gap-0.5 text-base text-ink">
-          <ChevronLeft size={24} strokeWidth={1.5} />
-          Flock
-        </Link>
-        <h1 className="text-[17px] font-semibold text-ink">Account</h1>
-      </nav>
+      <NavBar title="Account" />
 
       <section className="flex flex-col items-center gap-1 pt-3 pb-2">
         {profile ? (
           <>
             <Avatar user={profile} size={84} />
-            <p className="text-xl font-bold text-ink">{profile.display_name}</p>
-            <p className="text-sm text-muted">@{profile.username}</p>
-            {profile.bio && <p className="max-w-[300px] text-center text-sm text-ink">{profile.bio}</p>}
+            <p className="text-2xl font-bold text-ink">{profile.display_name}</p>
+            <p className="text-[17px] text-muted">@{profile.username}</p>
+            {profile.bio && <p className="max-w-[300px] text-center text-[17px] text-ink">{profile.bio}</p>}
           </>
         ) : (
           <>
-            <div className="size-[84px] animate-pulse rounded-full bg-cream" />
-            <div className="mt-1 h-5 w-32 animate-pulse rounded bg-cream" />
-            <div className="h-4 w-24 animate-pulse rounded bg-cream" />
+            <div className="size-[84px] animate-pulse rounded-full bg-card" />
+            <div className="mt-1 h-5 w-32 animate-pulse rounded bg-card" />
+            <div className="h-4 w-24 animate-pulse rounded bg-card" />
           </>
         )}
         <button
           onClick={() => setEditOpen(true)}
           disabled={!profile}
-          className="rough rough-cream mt-1 rounded-full px-4 py-1.5 text-[15px] font-bold text-ink"
+          className="rough mt-1 rounded-full px-4 py-2 text-[17px] font-bold text-ink"
         >
           Edit profile
         </button>
         <UserSwitcher />
       </section>
 
-      {error && <p className="px-4 pt-2 text-[13px] text-danger">{error}</p>}
+      {error && <p className="px-4 pt-2 text-[15px] text-danger">{error}</p>}
 
       <div className="flex items-center px-4 pt-4 pb-2">
-        <h2 className="flex flex-1 items-center gap-1.5 text-[17px] font-semibold text-ink">
-          <DrawnIcon name="save" size={18} />
+        <h2 className="flex flex-1 items-center gap-1.5 text-xl font-bold text-ink">
+          <Icon name="save" scale={18 / 22} />
           My stash
-          {stash && <span className="text-[15px] font-normal text-muted">{stash.length}</span>}
+          {stash && <span className="text-lg font-normal text-muted">{stash.length}</span>}
         </h2>
         {stash && stash.length > 3 && (
-          <button onClick={() => setShowAllStash((s) => !s)} className="text-sm font-semibold text-accent">
+          <button onClick={() => setShowAllStash((s) => !s)} className="text-[17px] font-bold text-accent">
             {showAllStash ? 'Show less' : 'See all'}
           </button>
         )}
@@ -80,12 +73,12 @@ export default function AccountPage() {
       {!stash ? (
         <div className="flex gap-2.5 overflow-hidden pl-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="size-[108px] shrink-0 animate-pulse rounded-[14px] bg-cream" />
+            <div key={i} className="size-[108px] shrink-0 animate-pulse rounded-[14px] bg-card" />
           ))}
         </div>
       ) : stash.length === 0 ? (
-        <p className="rough rough-cream mx-4 rounded-[14px] p-4 text-center text-[14px] text-muted">
-          Nothing stashed yet. Tap the save icon on any listing to stash it here.
+        <p className="rough mx-4 rounded-[14px] p-4 text-center text-base text-muted">
+          Nothing stashed yet. Tap the bookmark on any listing to save it here.
         </p>
       ) : (
         <div className={showAllStash ? 'grid grid-cols-3 gap-2.5 px-4' : 'no-scrollbar flex gap-2.5 overflow-x-auto px-4'}>
@@ -93,8 +86,8 @@ export default function AccountPage() {
             <div key={l.id} className={`flex flex-col gap-1.5 ${showAllStash ? '' : 'w-[108px] shrink-0'}`}>
               <ListingPhoto listing={l} rough className="aspect-square w-full rounded-[14px]" />
               <div>
-                <p className="text-[13px] font-semibold text-ink">{money(l.price)}/mo</p>
-                <p className="truncate text-xs text-muted">{l.neighborhood}</p>
+                <p className="text-[15px] font-bold text-ink">{money(l.price)}/mo</p>
+                <p className="truncate text-sm text-muted">{l.neighborhood}</p>
               </div>
             </div>
           ))}
@@ -145,8 +138,8 @@ export default function AccountPage() {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="px-8 pt-5 pb-1.5 text-xs font-semibold tracking-[0.48px] text-muted uppercase">{label}</h3>
-      <div className="rough rough-cream mx-4 rounded-[14px]">{children}</div>
+      <h3 className="px-8 pt-5 pb-1.5 text-sm font-bold tracking-[0.56px] text-muted uppercase">{label}</h3>
+      <div className="rough mx-4 rounded-[14px]">{children}</div>
     </section>
   );
 }

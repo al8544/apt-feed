@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Plus, Trophy } from 'lucide-react';
 import {
   CURRENT_USER_ID,
   getGroupMembers,
@@ -14,14 +13,12 @@ import {
 import { GROUP_NAME, groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
 import { inviteFriends } from '@/lib/share';
 import Avatar from '@/components/Avatar';
-import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
+import { flockScore as score } from '@/lib/compare';
+import RankingRow from '@/components/RankingRow';
 
-// Flock score: 70% share of the flock that swiped right, 30% how well it fits everyone's prefs.
-const score = (l: GroupListing, groupSize: number) =>
-  Math.round(70 * (groupSize ? l.likes / groupSize : 0) + 0.3 * l.match.pct);
 
 export default function GroupPage() {
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -60,17 +57,18 @@ export default function GroupPage() {
     prefs?.budgetMin != null && prefs.budgetMax != null
       ? prefs.budgetMin === prefs.budgetMax
         ? money(prefs.budgetMax)
-        : `${money(prefs.budgetMin)} – ${money(prefs.budgetMax)}`
+        : `${money(prefs.budgetMin)}–${money(prefs.budgetMax)}`
       : 'Any';
   const moveIn = prefs?.moveIn ? parseDateOnly(prefs.moveIn) : null;
 
   return (
-    <main className="pb-4">
-      <header className="flex items-center gap-1 px-4 pt-[max(8px,env(safe-area-inset-top))] pb-2">
-        <h1 className="text-[22px] font-bold text-ink">{GROUP_NAME}</h1>
-        <ChevronDown size={18} strokeWidth={1.5} className="text-ink" />
+    <main className="min-h-dvh bg-card pb-4">
+      <header className="flex items-center gap-1 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
+        <h1 className="text-[26px] font-bold text-ink">{GROUP_NAME}</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/down.svg" alt="" width={18} height={18} />
         <div className="flex-1" />
-        <Link href="/account" aria-label="My account" className="rounded-full">
+        <Link href="/account" aria-label="My account" className="rounded-full border-2 border-line">
           {me ? <Avatar user={me} size={30} /> : <div className="size-[30px] animate-pulse rounded-full bg-surface" />}
         </Link>
       </header>
@@ -79,19 +77,16 @@ export default function GroupPage() {
         <div className="flex">
           {!members
             ? [0, 1, 2, 3].map((i) => (
-                <div key={i} className="-mr-3 size-14 animate-pulse rounded-full border-[3px] border-cream bg-surface" />
+                <div key={i} className="-mr-3 size-14 animate-pulse rounded-full border-[3px] border-card bg-surface" />
               ))
-            : members.slice(0, 4).map((m) => <Avatar key={m.id} user={m} size={56} className="-mr-3 border-[3px] border-cream" />)}
-          <button
-            onClick={invite}
-            aria-label="Invite friends"
-            className="rough rough-surface flex size-14 items-center justify-center rounded-full text-ink"
-          >
-            <Plus size={22} strokeWidth={1.5} />
+            : members.slice(0, 4).map((m) => <Avatar key={m.id} user={m} size={56} className="-mr-3 border-[3px] border-card" />)}
+          <button onClick={invite} aria-label="Invite friends">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/invite.svg" alt="" width={58} height={58} />
           </button>
         </div>
-        <div className="flex flex-col gap-0.5 text-sm">
-          <p className="font-semibold text-ink">
+        <div className="flex flex-col gap-0.5 text-[17px]">
+          <p className="font-bold text-ink">
             {members ? `${size} ${size === 1 ? 'friend' : 'friends'} hunting together` : ' '}
           </p>
           {prefs && (
@@ -102,27 +97,39 @@ export default function GroupPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={invite} className="rough rough-surface flex-1 rounded-lg py-[7px] text-[15px] font-bold text-ink">
+          <button onClick={invite} className="rough flex-1 rounded-lg py-[9px] text-[17px] font-bold text-ink [--fill:var(--color-surface)]">
             Invite friends
           </button>
-          <button onClick={() => setPrefsOpen(true)} className="rough rough-surface flex-1 rounded-lg py-[7px] text-[15px] font-bold text-ink">
+          <button
+            onClick={() => setPrefsOpen(true)}
+            className="rough flex-1 rounded-lg py-[9px] text-[17px] font-bold text-ink [--fill:var(--color-surface)]"
+          >
             Flock preferences
           </button>
         </div>
       </section>
 
-      {error && <p className="px-4 pt-3 text-[13px] text-danger">{error}</p>}
+      {error && <p className="px-4 pt-3 text-[15px] text-danger">{error}</p>}
 
       <SectionHeader
         title={
           <>
-            <Trophy size={18} strokeWidth={1.5} /> Flock rankings
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/trophy.svg" alt="" width={18} height={18} /> Flock rankings
+          </>
+        }
+        extra={
+          <>
+            <Link href="/compare/pick" className="text-[17px] font-bold text-ink">
+              Compare
+            </Link>
+            {ranked.length > 4 && <span className="w-[22px] text-center text-[17px] text-ink/50">·</span>}
           </>
         }
         action={ranked.length > 4 ? (showAll ? 'Show less' : 'See all') : undefined}
         onAction={() => setShowAll((s) => !s)}
       />
-      <p className="px-4 pb-1.5 text-[13px] text-muted">Ranked by everyone&apos;s swipes &amp; flock prefs</p>
+      <p className="px-4 pb-1.5 text-[15px] text-muted">Ranked by everyone&apos;s swipes &amp; flock prefs</p>
       {!listings || !members ? (
         [0, 1, 2].map((i) => (
           <div key={i} className="flex animate-pulse items-center gap-3 px-4 py-2">
@@ -135,36 +142,11 @@ export default function GroupPage() {
           </div>
         ))
       ) : ranked.length === 0 ? (
-        <p className="rough rough-surface mx-4 rounded-[18px] p-4 text-center text-[14px] text-muted">
+        <p className="rough mx-4 rounded-[18px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
           No one has swiped right yet. Rankings show up once your flock starts liking places.
         </p>
       ) : (
-        visibleRanked.map(({ l, score }, i) => (
-          <div key={l.id} className="flex items-center gap-3 px-4 py-2">
-            <span className="w-[18px] text-center text-lg font-bold text-ink">{i + 1}</span>
-            <ListingPhoto listing={l} rough className="size-[60px] shrink-0 rounded-xl" />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <p className="truncate text-[15px] font-semibold text-ink">
-                {money(l.price)} · {l.beds} bd
-              </p>
-              <p className="truncate text-[13px] text-muted">
-                {l.address} · {l.neighborhood}
-              </p>
-              <div className="flex items-center gap-2 pt-[5px]">
-                <div className="h-[5px] w-16 overflow-hidden rounded-full bg-surface">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, (l.likes / size) * 100)}%` }} />
-                </div>
-                <span className="text-xs font-medium text-muted">
-                  {l.likes}/{size} swiped right
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[17px] font-bold text-accent">{score}</span>
-              <span className="text-[11px] text-muted">score</span>
-            </div>
-          </div>
-        ))
+        visibleRanked.map(({ l, score }, i) => <RankingRow key={l.id} rank={i + 1} listing={l} score={score} groupSize={size} />)
       )}
 
       <SectionHeader title="Members" />
@@ -182,17 +164,20 @@ export default function GroupPage() {
             <div key={m.id} className="flex items-center gap-3 px-4 py-2">
               <Avatar user={m} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold text-ink">
+                <p className="truncate text-[21px] font-bold text-ink">
                   {m.display_name}
                   {m.id === CURRENT_USER_ID && <span className="font-normal text-muted"> (you)</span>}
                 </p>
-                <p className="truncate text-[13px] text-muted">
+                <p className="truncate text-lg text-muted">
                   @{m.username}
                   {m.role === 'admin' && ' · admin'} · {m.swipeCount} {m.swipeCount === 1 ? 'swipe' : 'swipes'}
                 </p>
               </div>
               {m.id !== CURRENT_USER_ID && (
-                <button onClick={() => setChatWith(m)} className="rough rough-surface rounded-lg px-3.5 py-[5px] text-[15px] font-bold text-ink">
+                <button
+                  onClick={() => setChatWith(m)}
+                  className="rough rounded-lg px-3.5 py-[7px] text-lg font-bold text-ink [--fill:var(--color-surface)]"
+                >
                   Message
                 </button>
               )}
@@ -230,7 +215,7 @@ export default function GroupPage() {
       <MessageSheet member={chatWith} onClose={() => setChatWith(null)} />
 
       {toast && (
-        <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-cream">
+        <div className="rough fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
           {toast}
         </div>
       )}
@@ -240,18 +225,21 @@ export default function GroupPage() {
 
 function SectionHeader({
   title,
+  extra,
   action,
   onAction,
 }: {
   title: React.ReactNode;
+  extra?: React.ReactNode;
   action?: string;
   onAction?: () => void;
 }) {
   return (
     <div className="flex items-center px-4 pt-5 pb-1">
-      <h2 className="flex flex-1 items-center gap-1.5 text-[17px] font-semibold text-ink">{title}</h2>
+      <h2 className="flex flex-1 items-center gap-1.5 text-xl font-bold text-ink">{title}</h2>
+      {extra}
       {action && (
-        <button onClick={onAction} className="text-sm font-semibold text-accent">
+        <button onClick={onAction} className="text-[17px] font-bold text-accent">
           {action}
         </button>
       )}
