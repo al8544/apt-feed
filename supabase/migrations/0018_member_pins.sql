@@ -12,7 +12,7 @@ create policy "my pin" on public.member_pins for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Straight-line miles from each listing to the pins of the flock's active members who set one. Only the farthest and the average
--- come out, never a coordinate or whose pin is where. Members only. shortcut: straight-line, not a route; see the commute-time follow-up.
+-- come out, never a coordinate or whose pin is where, and only once at least two members have a pin. Members only. shortcut: straight-line, not a route; see the commute-time follow-up.
 create function public.flock_pin_distances(p_flock_id uuid, p_listing_ids uuid[])
 returns table (listing_id uuid, max_mi double precision, avg_mi double precision, pins int)
 language sql stable security definer set search_path = public as $$
@@ -24,6 +24,7 @@ language sql stable security definer set search_path = public as $$
     sin(radians(l.lat - p.lat) / 2) ^ 2 + cos(radians(p.lat)) * cos(radians(l.lat)) * sin(radians(l.lng - p.lng) / 2) ^ 2)))) as x(d)
   where l.id = any(p_listing_ids) and public.is_flock_member(p_flock_id)
   group by l.id
+  having count(*) >= 2   -- one pin would make the distances reveal that person's location
 $$;
 revoke execute on function public.flock_pin_distances(uuid, uuid[]) from public, anon;
 grant  execute on function public.flock_pin_distances(uuid, uuid[]) to authenticated;
