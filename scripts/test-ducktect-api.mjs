@@ -50,12 +50,12 @@ try {
   check(!!r && !solo.ev.some((e) => e.type === 'error'), 'a model that fails still ends in a result, not an error');
   check(r?.viaModel === false && r?.solo === true, 'the result says it was built by the rules, for you alone');
   const steps = solo.ev.filter((e) => e.type === 'step').map((e) => e.name);
-  check(['interpret_wish', 'apartment-searcher', 'aerial-evidence', 'rank_candidates'].every((n) => steps.includes(n)), `the steps stream in order (${steps.join(' > ')})`);
+  check(['interpret_wish', 'area-scout', 'aerial-evidence', 'rank_candidates'].every((n) => steps.includes(n)), `the steps stream in order (${steps.join(' > ')})`);
   check(r?.picks?.length > 0 && r.picks.length <= 5 && r.picks.every((p, i) => p.rank === i + 1), `ranked picks, best first (${r?.picks?.length})`);
-  check(r?.interpreted?.visual?.[0] === 'swimming pool' && r?.interpreted?.hard?.beds === 2 && r?.interpreted?.hard?.maxRent === 6000, 'the wish was split: 2 bed, $6,000, a pool to check');
-  check(r?.picks?.every((p) => p.criteria.some((c) => c.key === 'aerial: swimming pool') && p.evidence.length === 1), 'every pick carries an aerial line for the pool (cached, or "unavailable")');
+  check(r?.interpreted?.checks?.[0]?.imagery?.[0] === 'swimming pool' && r?.interpreted?.hard?.beds === 2 && r?.interpreted?.hard?.maxRent === 6000, 'the wish was read: 2 bed, $6,000, a pool to confirm from above');
+  check(r?.picks?.every((p) => p.criteria.some((c) => c.key === 'satellite: swimming pool') && p.evidence.length === 1), 'every pick carries a satellite line for the pool (cached, or "unavailable")');
   check(r?.picks?.every((p) => p.evidence.every((e) => ['found', 'not_seen', 'unavailable'].includes(e.status))), 'evidence statuses are the known ones');
-  check(['ok', 'partial', 'unavailable'].includes(r?.aerial) && r?.considered >= r?.checked && r?.checked <= 25, `aerial status ${r?.aerial}, checked ${r?.checked} of ${r?.considered}`);
+  check(['ok', 'partial', 'unavailable'].includes(r?.aerial) && r?.considered >= r?.checked && r?.shortlisted <= 12, `satellite ${r?.aerial} on the best ${r?.shortlisted}, looked around ${r?.checked} of ${r?.considered}`);
 
   // ---- more of the contract ----
   const area = (await ask(people.member, { text: '2 bed in Hollywood under $6,000' })).get();
@@ -68,7 +68,10 @@ try {
   const none = (await ask(people.member, { text: '5 bedroom under $600' })).get();
   check(none?.picks?.length === 0 && none?.noResults?.constraints?.length > 0 && none.noResults.constraints.some((c) => c.key === 'rent'), 'nothing matches: it names the constraint, with what dropping it gives');
   const quiet = (await ask(people.member, { text: '2 bed under $6,000, quiet' })).get();
-  check(quiet?.aerial === 'skipped' && quiet.interpreted.notChecked.includes('quiet') && quiet.picks.every((p) => p.criteria.some((c) => c.key === 'not checked: quiet')), 'no visual phrase: the aerial step is skipped, and "quiet" is named as not checked');
+  check(quiet?.aerial === 'skipped' && quiet?.surroundings === 'skipped' && quiet.interpreted.notChecked.includes('quiet') && quiet.picks.every((p) => p.criteria.some((c) => c.key === 'not checked: quiet')), 'nothing to look around for or confirm: both are skipped, and "quiet" is named as not checked');
+  const cafe = (await ask(people.member, { text: '2 bed near a coffee shop under $6,000' })).get();
+  check(cafe?.surroundings === 'ok' && cafe.picks.length > 0 && cafe.picks.every((p) => p.criteria.some((c) => c.key.startsWith('around:'))), `a need to be near something is answered from the map data (${cafe?.surroundings})`);
+  check(cafe?.picks?.some((p) => p.evidence.some((e) => e.source === 'osm' && e.status === 'found')), 'and at least one pick has a real named place within a walk');
   const inFlock = (await ask(people.member, { flockId: flock, text: '2 bed under $6,000' })).get();
   check(inFlock?.solo === false && inFlock.picks.length > 0, 'with a flock it runs for the flock');
   const filtered = (await ask(people.member, { text: 'a nice place', filters: { maxRent: 2500, beds: 2 } })).get();

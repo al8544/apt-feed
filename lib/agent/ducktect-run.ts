@@ -7,10 +7,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type * as z from 'zod';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { supabaseAerialStore, type AerialStore } from '../enrich/aerial.ts';
+import { supabasePlaceStore } from '../enrich/places.ts';
 import { createVexcel } from '../enrich/vexcel.ts';
 import { adminClient } from '../server/admin.ts';
 import { createDucktectAgent } from './ducktect-agent.ts';
-import { checkAerial, findCandidates, interpret, newSession, rank, type DucktectEnv } from './ducktect.ts';
+import { imageryLabels } from './ducktect-split.ts';
+import { confirmWithSatellite, interpret, newSession, rank, scout, type DucktectEnv } from './ducktect.ts';
 import { inventedNumbers } from './guard.ts';
 import { conciseSummary } from './ducktect-notes.ts';
 import { AgentHttpError } from './run.ts';
@@ -51,7 +53,7 @@ export async function startDucktect(opts: { db: SupabaseClient; userId: string; 
   const live = !!process.env.VEXCEL_API_KEY && !!writer;
 
   const env: DucktectEnv = {
-    store: supabaseStore(db), aerialStore, vexcel: live ? createVexcel() : undefined, budget: { calls: AERIAL_CALLS },
+    store: supabaseStore(db), aerialStore, places: supabasePlaceStore(db), vexcel: live ? createVexcel() : undefined, budget: { calls: AERIAL_CALLS },
     userId, flockId, viewport: input.viewport ?? null, defaults: input.filters,
   };
   const hasModel = !!opts.model || !!process.env.OPENAI_API_KEY;
@@ -89,11 +91,11 @@ export async function startDucktect(opts: { db: SupabaseClient; userId: string; 
     drop: (e) => e.type === 'token', // the model's words are never shown as they arrive; its summary is vetted below
     after: async (send) => {
       if (!session.result) {
-        // No model, or it failed, or it never ranked: do the work from here, streaming the same steps.
+        // No model, or it failed, or it never ranked: do the work from here, streaming the same steps. It reads the wish, not the person.
         if (!session.interpreted) { session.viaModel = false; send({ type: 'step', name: 'interpret_wish' }); interpret(env, session, text); }
-        send({ type: 'step', name: 'apartment-searcher' });
-        await findCandidates(env, session);
-        if (session.interpreted?.visual.length) { send({ type: 'step', name: 'aerial-evidence' }); await checkAerial(env, session); }
+        send({ type: 'step', name: 'area-scout' });
+        await scout(env, session);
+        if (imageryLabels(session.interpreted!).length) { send({ type: 'step', name: 'aerial-evidence' }); await confirmWithSatellite(env, session); }
         send({ type: 'step', name: 'rank_candidates' });
         await rank(env, session);
       }

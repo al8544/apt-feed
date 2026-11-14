@@ -2,31 +2,53 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { DucktectResult } from './ducktect.ts';
-import { conciseSummary, notesFor } from './ducktect-notes.ts';
+import { conciseSummary, notesFor, readingLines } from './ducktect-notes.ts';
 
+const interpreted = (over: Partial<DucktectResult['interpreted']> = {}): DucktectResult['interpreted'] => ({ hard: { areas: [] }, checks: [], notChecked: [], lifestyle: null, ...over });
 const base = (over: Partial<DucktectResult> = {}): DucktectResult => ({
-  interpreted: { hard: { areas: [] }, visual: [], notChecked: [] }, picks: [{ rank: 1 } as never], alsoConsidered: [], considered: 5, checked: 5, truncated: false,
-  aerial: 'ok', aerialPlaces: 5, noResults: null, area: null, solo: true, viaModel: true, ...over,
+  interpreted: interpreted(), picks: [{ rank: 1, evidence: [] } as never], alsoConsidered: [], considered: 5, checked: 5, shortlisted: 5, truncated: false,
+  surroundings: 'ok', aerial: 'ok', aerialPlaces: 5, tightened: [], unverified: [], undistinguishing: [], noResults: null, area: null, solo: true, viaModel: true, ...over,
 });
 const texts = (r: DucktectResult) => notesFor(r).map((n) => n.text);
+const around = { need: 'a place to climb', why: 'climbs most evenings', source: 'profile' as const, around: { terms: ['climbing'], reach: 'walk' as const, want: 'near' as const } };
 
-test('Vexcel down: says the aerial check was unavailable and what the ranking rests on', () => {
-  const t = notesFor(base({ interpreted: { hard: { areas: [] }, visual: ['swimming pool'], notChecked: [] }, aerial: 'unavailable', aerialPlaces: 0 }));
-  assert.deepEqual(t, [{ tone: 'warn', text: 'Aerial check unavailable, so these are ranked on listing data only.' }]);
+test('how the day was read is shown so the person can see it and correct it', () => {
+  const r = base({ interpreted: interpreted({ checks: [around, { need: 'shade', why: 'asked for trees', source: 'wish', imagery: ['tree cover'] }] }) });
+  assert.deepEqual(readingLines(r), ['a place to climb: climbs most evenings (from your profile)', 'shade: asked for trees']);
 });
 
-test('only some places got aerial evidence: says how many', () => {
-  const t = texts(base({ interpreted: { hard: { areas: [] }, visual: ['swimming pool'], notChecked: [] }, aerial: 'partial', aerialPlaces: 2, checked: 5 }));
-  assert.deepEqual(t, ['Aerial imagery covered 2 of 5 places; the rest read "unavailable".']);
+test('map data down: says what around each place was not checked', () => {
+  const t = notesFor(base({ surroundings: 'unavailable' }));
+  assert.deepEqual(t[0], { tone: 'warn', text: 'Nearby-places data unavailable, so what is around each place was not checked.' });
 });
 
-test('no visual phrase: says the aerial step was skipped, and does not pretend it ran', () => {
-  assert.deepEqual(texts(base({ aerial: 'skipped' })), ['No visual details in your wish, so the aerial imagery step was skipped.']);
+test('Vexcel down: says the shortlist was not confirmed from above', () => {
+  assert.ok(notesFor(base({ aerial: 'unavailable', aerialPlaces: 0 })).some((n) => n.tone === 'warn' && n.text === 'Aerial check unavailable, so the shortlist was not confirmed from above.'));
+});
+
+test('only some shortlisted places got satellite evidence: says how many', () => {
+  assert.ok(texts(base({ aerial: 'partial', aerialPlaces: 2, shortlisted: 5 })).includes('The satellite covered 2 of the 5 shortlisted places; the rest read "unavailable".'));
+});
+
+test('nothing to look around for or confirm: says the ranking rests on the listing', () => {
+  assert.ok(texts(base({ surroundings: 'skipped', aerial: 'skipped' })).includes('Nothing in your wish needed looking around for or confirming from above, so these are ranked on listing data.'));
+});
+
+test('a label the satellite never showed is named, and said not to have been used to rank', () => {
+  assert.ok(texts(base({ unverified: ['skate park'] })).includes('The satellite showed no "skate park" at any shortlisted place, so it may not be something it recognises; it was not used to rank.'));
+});
+
+test('a need whose reach was narrowed says so, and to what', () => {
+  assert.ok(texts(base({ tightened: [{ need: 'quick to a hospital', from: 'drive', to: 'bike' }] })).includes('"quick to a hospital" was met almost everywhere within a fifteen-minute drive, so it was narrowed to a ten-minute bike ride to tell places apart.'));
+});
+
+test('anything true of nearly every place is named too: it told places apart no better', () => {
+  assert.ok(texts(base({ undistinguishing: ['green space'] })).includes('"green space" was true of nearly every place we looked at, so it did not help tell them apart; it was not used to rank.'));
 });
 
 test('no results: names the constraint that did it and what dropping it would give', () => {
   const t = notesFor(base({
-    picks: [], interpreted: { hard: { areas: [] }, visual: [], notChecked: [] }, aerial: 'skipped',
+    picks: [], surroundings: 'skipped', aerial: 'skipped',
     noResults: { constraints: [{ key: 'rent', detail: 'under $1,000', ifRelaxed: 12 }, { key: 'beds', detail: '3+ bedrooms', ifRelaxed: 1 }, { key: 'pets', detail: 'pets allowed', ifRelaxed: 0 }], closest: [{ floorPlanId: 'x', address: '5 Elm St', relax: ['raise the combined budget by $120 (12%)'] }] },
   }));
   assert.equal(t[0]!.tone, 'warn');
@@ -36,28 +58,26 @@ test('no results: names the constraint that did it and what dropping it would gi
 });
 
 test('no results and no single limit explains it: says so plainly', () => {
-  const t = texts(base({ picks: [], noResults: { constraints: [{ key: 'rent', detail: 'under $1,000', ifRelaxed: 0 }], closest: [] } }));
-  assert.match(t[0]!, /Nothing matched, even with each limit dropped/);
+  assert.match(texts(base({ picks: [], noResults: { constraints: [{ key: 'rent', detail: 'under $1,000', ifRelaxed: 0 }], closest: [] } }))[0]!, /Nothing matched, even with each limit dropped/);
 });
 
-test('the cap is stated, with a plus when more existed than were pulled', () => {
-  assert.ok(texts(base({ considered: 127, checked: 25, truncated: true })).includes('Checked 25 of 127+ places that fit.'));
-  assert.ok(texts(base({ considered: 40, checked: 25 })).includes('Checked 25 of 40 places that fit.'));
-  assert.ok(!texts(base()).some((x) => x.startsWith('Checked')), 'nothing to say when everything was checked');
+test('the limits are stated: how many places were examined, and how many were confirmed from above', () => {
+  assert.ok(texts(base({ considered: 127, checked: 127, shortlisted: 12 })).includes('Looked around 127 places that fit, then confirmed the best 12 from above.'));
+  assert.ok(texts(base({ considered: 700, checked: 300, shortlisted: 12, truncated: true })).includes('Looked around 300 of 700+ places that fit, then confirmed the best 12 from above.'));
+  assert.ok(texts(base({ aerial: 'skipped' })).includes('Looked around 5 places that fit.'), 'nothing is said about confirming when nothing was');
 });
 
 test('wishes nobody can check are named, and so is a model-free answer', () => {
-  const t = texts(base({ viaModel: false, interpreted: { hard: { areas: [] }, visual: [], notChecked: ['sunny', 'park nearby', 'quiet'] } }));
-  assert.ok(t.includes('Not checked: sunny, park nearby and quiet.'));
+  const t = texts(base({ viaModel: false, interpreted: interpreted({ notChecked: ['sunny', 'a quiet street', 'good light'] }) }));
+  assert.ok(t.includes('Not checked: sunny, a quiet street and good light.'));
   assert.ok(t.some((x) => x.includes("Ducktect's rules instead of the AI agent")));
 });
 
-test('a named area is stated', () => {
-  assert.ok(texts(base({ area: { names: ['Silver Lake', 'Echo Park'], viewport: { south: 0, north: 1, west: 0, east: 1 } } })).includes('Looking in Silver Lake and Echo Park.'));
-});
-
-test('a healthy answer says nothing it does not need to', () => {
-  assert.deepEqual(notesFor(base({ interpreted: { hard: { areas: [] }, visual: ['swimming pool'], notChecked: [] } })), []);
+test('a named area is stated, and map data is credited when it was used', () => {
+  const r = base({ area: { names: ['Silver Lake', 'Echo Park'], viewport: { south: 0, north: 1, west: 0, east: 1 } }, picks: [{ rank: 1, evidence: [{ phrase: 'x', status: 'found', text: 't', confidence: null, imagery: null, source: 'osm' }] } as never] });
+  assert.ok(texts(r).includes('Looking in Silver Lake and Echo Park.'));
+  assert.ok(texts(r).includes('Places: © OpenStreetMap contributors.'));
+  assert.ok(!texts(base()).includes('Places: © OpenStreetMap contributors.'), 'no credit when the map data was not used');
 });
 
 test('the summary is a headline: two sentences at most, no dash asides, never past 220 characters', () => {

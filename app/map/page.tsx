@@ -176,6 +176,15 @@ export default function MapPage() {
               state={ducktect}
               listings={all ?? []}
               hasFlock={!!storedFlockId()}
+              swipes={swipes}
+              onVote={(id, dir) =>
+                setSwipes((m) => {
+                  const next = new globalThis.Map(m);
+                  if (dir) next.set(id, dir);
+                  else next.delete(id);
+                  return next;
+                })
+              }
               focusRank={focusRank}
               onFocus={setFocusRank}
               onClose={closeDucktect}

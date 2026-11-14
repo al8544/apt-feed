@@ -3,7 +3,7 @@
 // It never throws and never invents: no cache and no live answer means "aerial check unavailable", and the wording never claims more than
 // imagery shows ("not confirmed as a resident amenity").
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { DETECT_THRESHOLD, canonicalPhrase, isDetectPhrase, type DetectSummary, type Imagery, type PropertyAttributes, type Reason, type Vexcel } from './vexcel.ts';
+import { DETECT_THRESHOLD, canonicalPhrase, isAttributePhrase, type DetectSummary, type Imagery, type PropertyAttributes, type Reason, type Vexcel } from './vexcel.ts';
 
 export const DEFAULT_BUFFER_M = 80; // half the side of the square searched around a community, in metres
 
@@ -13,7 +13,8 @@ export type Evidence = {
   text: string;
   confidence: number | null; // Vexcel's 0-1 detection confidence (found / not_seen from detection); null otherwise
   imagery: Imagery | null; // which flight and when, for the evidence card
-  source: 'cache' | 'live' | null;
+  source: 'cache' | 'live' | 'osm' | null; // 'osm': read from the OpenStreetMap places in the database (lib/enrich/places.ts)
+  meters?: number | null; // for a place found around a home: how far it is, so closer can score better
 };
 
 export type QueryRow = {
@@ -82,14 +83,15 @@ export const toRow = (phrase: string, s: DetectSummary): QueryRow => {
 };
 
 // ---------- wording (§6.3: evidence, never a claim about residents) ----------
-const THING: Record<string, string> = { 'swimming pool': 'a swimming pool', 'tennis court': 'a tennis court', 'parking lot': 'a parking lot' };
+// "a basketball court", "an outdoor kitchen", and no article for plurals or masses ("solar panels", "grass lawn" reads fine with one, but "solar panels" does not).
+const withArticle = (label: string) => (/s$/.test(label) && !/(ss|us)$/.test(label) ? label : `${/^[aeiou]/.test(label) ? 'an' : 'a'} ${label}`);
 
 export function evidenceFromQuery(phrase: string, row: QueryRow, source: 'cache' | 'live'): Evidence {
   const found = row.result.found;
   return {
     phrase, status: found ? 'found' : 'not_seen', confidence: row.score, imagery: row.result.imagery, source,
     text: found
-      ? `Aerial imagery suggests ${THING[phrase] ?? phrase} nearby (not confirmed as a resident amenity).`
+      ? `Aerial imagery suggests ${withArticle(phrase)} nearby (not confirmed as a resident amenity).`
       : `No ${phrase} seen in aerial imagery around this property (imagery cannot rule it out).`,
   };
 }
@@ -118,7 +120,7 @@ export type EvidenceOptions = {
 export async function aerialEvidence(community: Community, phrases: string[], opts: EvidenceOptions): Promise<Evidence[]> {
   const buffer = opts.bufferM ?? DEFAULT_BUFFER_M;
   const wanted = phrases.map((raw) => ({ raw, phrase: canonicalPhrase(raw) }));
-  const detectPhrases = [...new Set(wanted.flatMap((w) => (w.phrase && isDetectPhrase(w.phrase) ? [w.phrase] : [])))];
+  const detectPhrases = [...new Set(wanted.flatMap((w) => (w.phrase && !isAttributePhrase(w.phrase) ? [w.phrase] : [])))]; // anything nameable goes to the detector
   const wantsTrees = wanted.some((w) => w.phrase === 'tree cover');
 
   const detected = new Map<string, Evidence>();
