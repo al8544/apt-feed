@@ -66,10 +66,10 @@
     "semantic_hash": "256103b1e349f1ac24c2fc648db4629a"
   },
   "app/map/page.tsx": {
-    "mtime": 1794664214.2805197,
-    "seen": 1794679452.526345,
-    "ast_hash": "1681a3663e148cc419dd807ce9741301",
-    "semantic_hash": "1681a3663e148cc419dd807ce9741301"
+    "mtime": 1794683317.0312433,
+    "seen": 1794683517.6435351,
+    "ast_hash": "29f6e59a4202c09aaf331b46fd241513",
+    "semantic_hash": ""
   },
   "app/members/page.tsx": {
     "mtime": 1794653497.9605825,
@@ -186,10 +186,10 @@
     "semantic_hash": "f04baf00a897d6b3979bb3efcc189867"
   },
   "components/MapSearch.tsx": {
-    "mtime": 1794664214.2828233,
-    "seen": 1794679452.5263638,
-    "ast_hash": "555dbd4f763594d745f9575115bef0ba",
-    "semantic_hash": "555dbd4f763594d745f9575115bef0ba"
+    "mtime": 1794683160.4917057,
+    "seen": 1794683517.643944,
+    "ast_hash": "6bb703ae5a4cd6b0ea2d13a982bdd119",
+    "semantic_hash": ""
   },
   "components/MessageSheet.tsx": {
     "mtime": 1794652697.8999577,
@@ -222,10 +222,10 @@
     "semantic_hash": "5805f3023e1b23e4cba66bd05ef2c208"
   },
   "components/PricePill.tsx": {
-    "mtime": 1794652697.8989918,
-    "seen": 1794679452.526369,
-    "ast_hash": "5d8c3f28a40b106bd3cd9b7d9e38d174",
-    "semantic_hash": "5d8c3f28a40b106bd3cd9b7d9e38d174"
+    "mtime": 1794683103.7198849,
+    "seen": 1794683517.644043,
+    "ast_hash": "74d6a3d816a4b4fbc3feb65b9d32ebb2",
+    "semantic_hash": ""
   },
   "components/RankingRow.tsx": {
     "mtime": 1794664214.2837214,
@@ -270,9 +270,9 @@
     "semantic_hash": "18a86aa5af9b3867cab09f0a6af1f5b8"
   },
   "lib/api.ts": {
-    "mtime": 1794680905.3472326,
-    "seen": 1794681567.073906,
-    "ast_hash": "4ae435766b700e2b2c4f2337c2ee4f5f",
+    "mtime": 1794683103.7194345,
+    "seen": 1794683517.644365,
+    "ast_hash": "226456519684bb8bf2fb4da012e7ae56",
     "semantic_hash": ""
   },
   "lib/compare.test.ts": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "docs/DESIGN.md": {
-    "mtime": 1794681537.5275414,
-    "seen": 1794681567.074749,
-    "ast_hash": "df731f8b7c7813ace38222681514bae3",
+    "mtime": 1794683516.165148,
+    "seen": 1794683517.6452081,
+    "ast_hash": "ae86d94c3fb57a6d2fb0cc27c0ff20f3",
     "semantic_hash": ""
   },
   "app/(auth)/layout.tsx": {
@@ -1080,9 +1080,9 @@
     "semantic_hash": ""
   },
   "lib/agent/prompts.ts": {
-    "mtime": 1794680261.4524946,
-    "seen": 1794681567.073811,
-    "ast_hash": "e6374ee29cdda292d781bc49b016db8b",
+    "mtime": 1794683409.3005505,
+    "seen": 1794683517.644323,
+    "ast_hash": "3b208ca13bb4067fdaea469deaa13820",
     "semantic_hash": ""
   },
   "lib/agent/run.ts": {
@@ -1092,21 +1092,21 @@
     "semantic_hash": ""
   },
   "lib/agent/schemas.ts": {
-    "mtime": 1794677400.4907973,
-    "seen": 1794679452.526386,
-    "ast_hash": "18cace9299cf0026345c126b5aa1f949",
+    "mtime": 1794682253.7320018,
+    "seen": 1794683517.644342,
+    "ast_hash": "1265877e761d0955c349042fb9644d25",
     "semantic_hash": ""
   },
   "lib/agent/store.ts": {
-    "mtime": 1794677400.4910007,
-    "seen": 1794679452.526387,
-    "ast_hash": "6f8aae4e6585dd7a3ee1ecd002c281d0",
+    "mtime": 1794682015.138086,
+    "seen": 1794683517.6443431,
+    "ast_hash": "5503c5b9aab7ae754a5cec1f7d1bea97",
     "semantic_hash": ""
   },
   "lib/agent/stream.ts": {
-    "mtime": 1794677400.491115,
-    "seen": 1794679452.526388,
-    "ast_hash": "ff874c0eb5aa021fa19ffe00a969ffd6",
+    "mtime": 1794682253.732164,
+    "seen": 1794683517.644344,
+    "ast_hash": "ec29fadec95a9c462463fe8e6006b666",
     "semantic_hash": ""
   },
   "lib/agent/tools/index.ts": {
@@ -1209,6 +1209,84 @@
     "mtime": 1794681505.9510994,
     "seen": 1794681567.0746088,
     "ast_hash": "5b716f54e297629cadaf02ea44693f1e",
+    "semantic_hash": ""
+  },
+  "app/api/ducktect/route.ts": {
+    "mtime": 1794682354.811407,
+    "seen": 1794683517.643119,
+    "ast_hash": "1ecd8d80479921608ee488adc2782c57",
+    "semantic_hash": ""
+  },
+  "components/DucktectPanel.tsx": {
+    "mtime": 1794683409.301286,
+    "seen": 1794683517.643789,
+    "ast_hash": "37e88d7ae82f29d0558b5035d6bba6e6",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-agent.test.ts": {
+    "mtime": 1794682315.6601706,
+    "seen": 1794683517.6442418,
+    "ast_hash": "fd16e980020703c62461991e7b9bef25",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-agent.ts": {
+    "mtime": 1794682955.8603606,
+    "seen": 1794683517.644243,
+    "ast_hash": "543b819b4c8b34ef5fcefd9032ecc719",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-notes.test.ts": {
+    "mtime": 1794683409.3015275,
+    "seen": 1794683517.644244,
+    "ast_hash": "c7a5bfe79c22e75f6ee237482cd19c1f",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-notes.ts": {
+    "mtime": 1794683418.795375,
+    "seen": 1794683517.644245,
+    "ast_hash": "ed66324515c1db64352adbe22a32e1c9",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-run.ts": {
+    "mtime": 1794683409.3009639,
+    "seen": 1794683517.644246,
+    "ast_hash": "ca1c8398b6f683d2071a947070111457",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-split.test.ts": {
+    "mtime": 1794682072.425464,
+    "seen": 1794683517.644247,
+    "ast_hash": "e2edd7c27969c19d3e7d49e5fbfeda75",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-split.ts": {
+    "mtime": 1794682080.2458873,
+    "seen": 1794683517.644248,
+    "ast_hash": "f465989e80a51b3ad4a6b97f9c4cef09",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect-testkit.ts": {
+    "mtime": 1794682290.0094783,
+    "seen": 1794683517.6442492,
+    "ast_hash": "d0be57d59838915952f8a700b6279ecb",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect.test.ts": {
+    "mtime": 1794683005.4669456,
+    "seen": 1794683517.6442502,
+    "ast_hash": "f22314d38efe3cbf0987bbb70438166e",
+    "semantic_hash": ""
+  },
+  "lib/agent/ducktect.ts": {
+    "mtime": 1794683005.4666843,
+    "seen": 1794683517.6442509,
+    "ast_hash": "824ac4c1a21e5a3fad3a384843c339ca",
+    "semantic_hash": ""
+  },
+  "scripts/test-ducktect-api.mjs": {
+    "mtime": 1794682804.1691298,
+    "seen": 1794683517.645117,
+    "ast_hash": "ea0d557663b57177b92949e278e97b77",
     "semantic_hash": ""
   },
   "package-lock.json": {

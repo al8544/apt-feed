@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import type { GroupListing } from '@/lib/api';
 import { shortPrice, area } from '@/lib/format';
-import { flockScore } from '@/lib/compare';
 import Ducktective from './Ducktective';
 import { matchesQuery } from './MapFiltersSheet';
 
@@ -14,22 +13,22 @@ const MAX_PLACES = 5;
 type Option =
   | { kind: 'home'; listing: GroupListing }
   | { kind: 'all'; count: number }
-  | { kind: 'best'; listing: GroupListing }
+  | { kind: 'ducktect'; text: string } // hands the typed wish to the Ducktect agent (docs/DESIGN.md §8.9)
   | { kind: 'place'; prediction: google.maps.places.PlacePrediction };
 
-// One search bar for both: your listings first, then any place from Google (Places API, New).
+// One search bar for all of it: Ducktect best option on top (any wish in prose), then your listings, then any place from Google (Places API, New).
 export default function MapSearch({
   listings,
-  groupSize,
   activeQuery,
   onPickListing,
   onShowMatches,
+  onDucktect,
 }: {
   listings: GroupListing[];
-  groupSize: number;
   activeQuery: string; // text currently filtering the pins ('' = none)
   onPickListing: (l: GroupListing) => void;
   onShowMatches: (q: string) => void; // '' clears the filter
+  onDucktect: (text: string, viewport: { south: number; north: number; west: number; east: number } | null) => void; // viewport = what the map shows now
 }) {
   const map = useMap();
   const places = useMapsLibrary('places');
@@ -37,16 +36,11 @@ export default function MapSearch({
   const [open, setOpen] = useState(false);
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
   const [placesError, setPlacesError] = useState(false);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(-1); // -1: the user has not moved; Enter then takes the first home or place, never Ducktect
   const token = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
 
   const q = text.trim();
   const homes = q ? listings.filter((l) => matchesQuery(l, q)) : [];
-  // Ducktect Best Option: the best flock score among the matching homes, or among all homes when none match.
-  const best = (homes.length ? homes : listings).reduce<GroupListing | null>(
-    (b, l) => (!b || flockScore(l, groupSize) > flockScore(b, groupSize) ? l : b),
-    null,
-  );
 
   // Google suggestions, debounced. Biased to what's on screen; US only.
   useEffect(() => {
@@ -75,12 +69,13 @@ export default function MapSearch({
   }, [places, map, q]);
 
   const options: Option[] = [
+    ...(q ? [{ kind: 'ducktect' as const, text: q }] : []), // pinned on top whenever something is typed
     ...homes.slice(0, MAX_HOMES).map((listing) => ({ kind: 'home' as const, listing })),
     ...(homes.length > 1 ? [{ kind: 'all' as const, count: homes.length }] : []),
     ...(q ? predictions : []).map((prediction) => ({ kind: 'place' as const, prediction })),
-    ...(best ? [{ kind: 'best' as const, listing: best }] : []),
   ];
   const showList = open && !!q;
+  const activeIdx = active >= 0 ? Math.min(active, options.length - 1) : options.length > 1 ? 1 : 0;
 
   function fitTo(ls: GroupListing[]) {
     if (!map || !ls.length) return;
@@ -96,7 +91,12 @@ export default function MapSearch({
 
   async function choose(o: Option) {
     setOpen(false);
-    if (o.kind === 'home' || o.kind === 'best') {
+    if (o.kind === 'ducktect') {
+      const b = map?.getBounds();
+      const ne = b?.getNorthEast(), sw = b?.getSouthWest();
+      onShowMatches('');
+      onDucktect(o.text, ne && sw ? { south: sw.lat(), north: ne.lat(), west: sw.lng(), east: ne.lng() } : null);
+    } else if (o.kind === 'home') {
       setText(o.listing.address);
       onShowMatches('');
       onPickListing(o.listing);
@@ -137,11 +137,11 @@ export default function MapSearch({
           role="combobox"
           aria-expanded={showList}
           aria-controls="map-search-list"
-          aria-activedescendant={showList && options[active] ? `map-search-${active}` : undefined}
+          aria-activedescendant={showList && options[activeIdx] ? `map-search-${activeIdx}` : undefined}
           aria-label="Search homes or places"
           placeholder="Los Angeles, CA"
           value={text}
-          onChange={(e) => (setText(e.target.value), setOpen(true), setActive(0))}
+          onChange={(e) => (setText(e.target.value), setOpen(true), setActive(-1))}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onKeyDown={(e) => {
@@ -150,10 +150,10 @@ export default function MapSearch({
             const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
             if (step) {
               e.preventDefault();
-              setActive((i) => (i + step + options.length) % options.length);
+              setActive((i) => ((i >= 0 ? Math.min(i, options.length - 1) : activeIdx) + step + options.length) % options.length);
             } else if (e.key === 'Enter') {
               e.preventDefault();
-              choose(options[active] ?? options[0]!);
+              choose(options[activeIdx] ?? options[0]!);
             }
           }}
           className="min-w-0 flex-1 bg-transparent text-[19px] text-ink outline-none placeholder:text-ink"
@@ -179,25 +179,17 @@ export default function MapSearch({
             onMouseDown={(e) => e.preventDefault()}
             className="rough absolute inset-x-0 top-full z-20 mt-2 max-h-[60dvh] overflow-y-auto rounded-md py-1"
           >
-            {homes.length === 0 && predictions.length === 0 && (
-              <li className="px-3.5 py-2.5 text-base text-muted">{places && !placesError ? 'Searching…' : 'No homes match'}</li>
-            )}
             {options.map((o, i) => (
-              <Fragment key={o.kind === 'home' ? o.listing.id : o.kind === 'all' || o.kind === 'best' ? o.kind : o.prediction.placeId}>
-                {o.kind === 'best' && predictions.length > 0 && (
-                  <li className="px-3.5 pt-1 pb-2.5 text-right text-xs text-muted">Places by Google</li>
-                )}
+              <Fragment key={o.kind === 'home' ? o.listing.id : o.kind === 'all' || o.kind === 'ducktect' ? o.kind : o.prediction.placeId}>
                 <li
                   id={`map-search-${i}`}
                   role="option"
-                  aria-selected={i === active}
+                  aria-selected={i === activeIdx}
                   onClick={() => choose(o)}
                   onMouseEnter={() => setActive(i)}
-                  className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 ${
-                    i === active ? 'bg-surface' : o.kind === 'best' ? 'bg-card' : ''
-                  } ${o.kind === 'best' ? 'sticky bottom-0 rounded-b-md' : ''} ${
-                    (o.kind === 'place' || o.kind === 'best') && i > 0 && options[i - 1]!.kind !== o.kind ? 'border-t border-line' : ''
-                  }`}
+                  className={`flex cursor-pointer items-center gap-2 px-3.5 py-2 ${i === activeIdx ? 'bg-surface' : ''} ${
+                    o.kind === 'ducktect' && options.length > 1 ? 'border-b border-line' : ''
+                  } ${o.kind === 'place' && i > 0 && options[i - 1]!.kind !== o.kind ? 'border-t border-line' : ''}`}
                 >
                   {o.kind === 'home' ? (
                     <>
@@ -210,10 +202,13 @@ export default function MapSearch({
                     </>
                   ) : o.kind === 'all' ? (
                     <span className="text-[17px] font-bold text-accent">Show all {o.count} matching homes</span>
-                  ) : o.kind === 'best' ? (
+                  ) : o.kind === 'ducktect' ? (
                     <>
-                      <Ducktective />
-                      <span className="text-xl font-bold text-ink">Ducktect Best Option</span>
+                      <Ducktective height={34} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[19px] leading-tight font-bold text-ink">Ducktect best option</span>
+                        <span className="block truncate text-[14px] text-muted">“{o.text}”</span>
+                      </span>
                     </>
                   ) : (
                     <>
@@ -226,8 +221,12 @@ export default function MapSearch({
                     </>
                   )}
                 </li>
+                {o.kind === 'ducktect' && homes.length === 0 && predictions.length === 0 && (
+                  <li className="px-3.5 py-2.5 text-base text-muted">{places && !placesError ? 'Searching…' : 'No homes match'}</li>
+                )}
               </Fragment>
             ))}
+            {predictions.length > 0 && <li className="px-3.5 pt-1 pb-2.5 text-right text-xs text-muted">Places by Google</li>}
           </motion.ul>
         )}
       </AnimatePresence>

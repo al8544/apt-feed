@@ -1,13 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { CURRENT_USER_ID, getGroupMembers, getMapListings, getMySwipes, getStash, type GroupListing } from '@/lib/api';
+import { CURRENT_USER_ID, askDucktect, getMapListings, getMySwipes, getStash, storedFlockId, type DucktectResult, type DucktectViewport, type GroupListing } from '@/lib/api';
 import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
 import Icon from '@/components/Icon';
 import MapFiltersSheet, { NO_FILTERS, applyFilters, type Filters } from '@/components/MapFiltersSheet';
 import MapSearch from '@/components/MapSearch';
+import DucktectPanel, { type DucktectState } from '@/components/DucktectPanel';
 
 const CENTER = { lat: 34.0522, lng: -118.2437 }; // downtown Los Angeles
 type LatLng = { lat: number; lng: number };
@@ -27,7 +28,6 @@ export default function MapPage() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [groupSize, setGroupSize] = useState(0);
   const [me, setMe] = useState<LatLng | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +35,50 @@ export default function MapPage() {
     getMapListings()
       .then(setAll)
       .catch((e) => (setError(e.message), setAll([])));
-    getGroupMembers().then((m) => setGroupSize(m.length)).catch(() => {});
     getMySwipes().then(setSwipes).catch(() => {});
     getStash().then((ls) => setStashed(new Set(ls.map((l) => l.id)))).catch(() => {});
   }, []);
 
+  // Ducktect best option (docs/DESIGN.md §8.9): the wish goes to /api/ducktect with what the map shows and the filters you set; steps stream in,
+  // then one result. While it shows, the pins restyle: picks numbered, the focused one highlighted, everything else dimmed.
+  const [ducktect, setDucktect] = useState<DucktectState | null>(null);
+  const [focusRank, setFocusRank] = useState(1);
+  const abort = useRef<AbortController | null>(null);
+  const lastAsk = useRef<{ text: string; viewport: DucktectViewport | null } | null>(null);
+
+  function startDucktect(text: string, viewport: DucktectViewport | null) {
+    abort.current?.abort();
+    const ac = (abort.current = new AbortController());
+    lastAsk.current = { text, viewport };
+    setSelectedId(null);
+    setFocusRank(1);
+    setDucktect({ text, phase: 'running', steps: [], result: null, error: null });
+    const patch = (f: (d: DucktectState) => DucktectState) => setDucktect((d) => (d && !ac.signal.aborted ? f(d) : d));
+    askDucktect(
+      { text, flockId: storedFlockId(), viewport: viewport ?? undefined, filters: { maxRent: filters.maxPrice ?? undefined, beds: filters.minBeds > 0 ? filters.minBeds : undefined, pets: filters.pets || undefined } },
+      (e) => {
+        if (e.type === 'step') patch((d) => ({ ...d, steps: [...d.steps, e.name] }));
+        else if (e.type === 'result') patch((d) => ({ ...d, phase: 'done', result: e.result }));
+        else if (e.type === 'error') patch((d) => ({ ...d, phase: 'error', error: e.message }));
+      },
+      ac.signal,
+    )
+      .then(() => patch((d) => (d.phase === 'running' ? { ...d, phase: 'error', error: 'Ducktect did not return an answer. Try again.' } : d)))
+      .catch((err: Error) => patch((d) => ({ ...d, phase: 'error', error: err.message })));
+  }
+  function closeDucktect() {
+    abort.current?.abort();
+    setDucktect(null);
+  }
+
   const mine = { swipes, stashed };
   const listings = all ? applyFilters(all, filters, mine) : [];
   const selected = listings.find((l) => l.id === selectedId) ?? null;
+
+  const result: DucktectResult | null = ducktect?.result ?? null;
+  const ranks = new globalThis.Map((result?.picks ?? []).map((p) => [p.communityId ?? p.floorPlanId, p.rank] as const));
+  // A pick can sit on a place your filters hide from the list; it still gets its pin.
+  const extraPicks = (result?.picks ?? []).filter((p) => !listings.some((l) => l.community_id === p.communityId) && p.lat != null && p.lng != null);
 
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
@@ -56,21 +92,32 @@ export default function MapPage() {
           onClick={() => setSelectedId(null)}
           className="size-full"
         >
-          {listings.map((l) => (
-            <AdvancedMarker
-              key={l.id}
-              position={{ lat: l.lat, lng: l.lng }}
-              onClick={() => setSelectedId(l.id)}
-              zIndex={l.id === selectedId ? 10 : l.likes > 0 ? 5 : 1}
-            >
-              <PricePill
-                price={l.price}
-                liked={l.likes > 0}
-                mine={l.likedBy.some((p) => p.id === CURRENT_USER_ID)}
-                selected={l.id === selectedId}
-              />
+          {listings.map((l) => {
+            const rank = ranks.get(l.community_id ?? l.id);
+            return (
+              <AdvancedMarker
+                key={l.id}
+                position={{ lat: l.lat, lng: l.lng }}
+                onClick={() => (rank ? setFocusRank(rank) : (closeDucktect(), setSelectedId(l.id)))}
+                zIndex={rank ? 20 - rank : l.id === selectedId ? 10 : l.likes > 0 ? 5 : 1}
+              >
+                <PricePill
+                  price={l.price}
+                  liked={l.likes > 0}
+                  mine={l.likedBy.some((p) => p.id === CURRENT_USER_ID)}
+                  selected={rank ? rank === focusRank : l.id === selectedId}
+                  rank={rank}
+                  dim={!!result?.picks.length && !rank}
+                />
+              </AdvancedMarker>
+            );
+          })}
+          {extraPicks.map((p) => (
+            <AdvancedMarker key={p.floorPlanId} position={{ lat: p.lat!, lng: p.lng! }} onClick={() => setFocusRank(p.rank)} zIndex={20 - p.rank}>
+              <PricePill price={p.rentFrom} liked={false} mine={false} selected={p.rank === focusRank} rank={p.rank} />
             </AdvancedMarker>
           ))}
+          <DucktectMapEffects result={result} />
           {me && (
             <AdvancedMarker position={me} zIndex={0}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -83,10 +130,10 @@ export default function MapPage() {
           <div className="pointer-events-auto flex gap-2.5 px-4">
             <MapSearch
               listings={all ?? []}
-              groupSize={groupSize}
               activeQuery={filters.query}
-              onPickListing={(l) => setSelectedId(l.id)}
+              onPickListing={(l) => (closeDucktect(), setSelectedId(l.id))}
               onShowMatches={(query) => setFilters((f) => ({ ...f, query }))}
+              onDucktect={startDucktect}
             />
             <button
               onClick={() => setSheetOpen(true)}
@@ -124,8 +171,23 @@ export default function MapPage() {
 
         <div className="absolute inset-x-4 bottom-[calc(80px+env(safe-area-inset-bottom))] flex flex-col items-end gap-3">
           <LocateButton onLocated={setMe} />
+          {ducktect && (
+            <DucktectPanel
+              state={ducktect}
+              listings={all ?? []}
+              hasFlock={!!storedFlockId()}
+              focusRank={focusRank}
+              onFocus={setFocusRank}
+              onClose={closeDucktect}
+              onRetry={() => lastAsk.current && startDucktect(lastAsk.current.text, lastAsk.current.viewport)}
+              onRefine={() => {
+                closeDucktect();
+                document.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus(); // the search bar keeps your wish; edit it and ask again
+              }}
+            />
+          )}
           <AnimatePresence mode="wait">
-            {selected && (
+            {selected && !ducktect && (
               <motion.div
                 key={selected.id}
                 className="w-full"
@@ -154,6 +216,23 @@ export default function MapPage() {
       </main>
     </APIProvider>
   );
+}
+
+// When Ducktect answers: move the map to its picks (or to the area it searched), leaving room for the panel at the bottom.
+function DucktectMapEffects({ result }: { result: DucktectResult | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !result) return;
+    const b = new google.maps.LatLngBounds();
+    result.picks.forEach((p) => p.lat != null && p.lng != null && b.extend({ lat: p.lat, lng: p.lng }));
+    if (b.isEmpty() && result.area) {
+      const v = result.area.viewport;
+      b.extend({ lat: v.south, lng: v.west });
+      b.extend({ lat: v.north, lng: v.east });
+    }
+    if (!b.isEmpty()) map.fitBounds(b, { top: 150, bottom: Math.round(window.innerHeight * 0.6), left: 40, right: 40 });
+  }, [map, result]);
+  return null;
 }
 
 function LocateButton({ onLocated }: { onLocated: (p: LatLng) => void }) {
