@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getAccountStats, getProfile, getStash, type Listing, type Profile } from '@/lib/api';
-import { GROUP_NAME, money } from '@/lib/format';
+import { GROUP_NAME, money, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import SettingsRow from '@/components/SettingsRow';
@@ -87,7 +87,7 @@ export default function AccountPage() {
               <ListingPhoto listing={l} rough className="aspect-square w-full rounded-md" />
               <div>
                 <p className="text-[15px] font-bold text-ink">{money(l.price)}/mo</p>
-                <p className="truncate text-sm text-muted">{l.neighborhood}</p>
+                <p className="truncate text-sm text-muted">{area(l)}</p>
               </div>
             </div>
           ))}

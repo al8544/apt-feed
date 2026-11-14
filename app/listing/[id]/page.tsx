@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getGroupMembers, getMapListings, getStash, stash, unstash, type GroupListing } from '@/lib/api';
-import { money, specs } from '@/lib/format';
+import { money, specs, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import NavBar from '@/components/NavBar';
@@ -50,7 +50,7 @@ export default function ListingDetailPage() {
           <p className="text-[32px] font-bold text-ink">{money(listing.price)}/mo</p>
           <p className="text-lg font-bold text-ink">{specs(listing)}{listing.pets && ' · Pets OK'}</p>
           <p className="text-[17px] text-muted">
-            {listing.address} · {listing.neighborhood}
+            {listing.address} · {area(listing)}
           </p>
           <div className="flex items-center gap-2.5 pt-2.5">
             <div className="flex">

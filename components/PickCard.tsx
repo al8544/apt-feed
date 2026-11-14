@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CURRENT_USER_ID, type GroupListing } from '@/lib/api';
-import { money, specs } from '@/lib/format';
+import { money, specs, area } from '@/lib/format';
 import Avatar from './Avatar';
 import Icon from './Icon';
 import ListingPhoto from './ListingPhoto';
@@ -48,7 +48,7 @@ export default function PickCard({
         </div>
         <p className="text-base text-ink">{specs(listing)}</p>
         <p className="truncate text-base text-muted">
-          {listing.address} · {listing.neighborhood}
+          {listing.address} · {area(listing)}
         </p>
         <div className="py-2.5">
           <div className="h-px bg-line" />

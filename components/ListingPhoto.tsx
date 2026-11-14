@@ -15,7 +15,8 @@ export function gradientFor(id: string) {
   return GRADIENTS[Math.abs(h) % GRADIENTS.length]!;
 }
 
-// `rough` gives the photo a hand-made grainy edge; children (badges) sit above it and stay crisp.
+// `rough` gives the photo a hand-made grainy edge: a roughened copy fills the box and a crisp copy sits 4px inside
+// it, so only the edge is noisy and the picture itself is untouched. Children (badges) stay crisp.
 export default function ListingPhoto({
   listing,
   index = 0,
@@ -30,17 +31,21 @@ export default function ListingPhoto({
   children?: React.ReactNode;
 }) {
   const src = listing.photos?.[index];
+  const layer = (inset: string, filter?: string) => (
+    <div
+      className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit]`}
+      style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter }}
+    >
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
+      )}
+    </div>
+  );
   return (
     <div className={`relative isolate ${rough ? '' : 'overflow-hidden'} ${className}`}>
-      <div
-        className="absolute inset-0 -z-10 overflow-hidden rounded-[inherit]"
-        style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter: rough ? 'url(#rough)' : undefined }}
-      >
-        {src && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={listing.address} draggable={false} className="absolute inset-0 size-full object-cover" />
-        )}
-      </div>
+      {layer('inset-0', rough ? 'url(#rough)' : undefined)}
+      {rough && layer('inset-[4px]')}
       {children}
     </div>
   );

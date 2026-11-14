@@ -94,7 +94,7 @@ function PrefsForm({
       </div>
       <label className="flex flex-col gap-1 text-[15px] text-muted">
         Neighborhoods (comma separated)
-        <input value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="Williamsburg, Greenpoint" className={field} />
+        <input value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="Silver Lake, Echo Park" className={field} />
       </label>
       <label className="flex flex-col gap-1 text-[15px] text-muted">
         Move-in date

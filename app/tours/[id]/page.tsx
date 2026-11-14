@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CURRENT_USER_ID, cancelTour, getTour, joinTour, leaveTour, type Tour } from '@/lib/api';
-import { firstName, money } from '@/lib/format';
+import { firstName, money, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
 import NavBar from '@/components/NavBar';
@@ -48,7 +48,7 @@ export default function TourDetailPage() {
           <ListingPhoto listing={tour.listing} rough className="mb-3 h-[210px] w-full rounded-md" />
           <h2 className="text-[26px] font-bold text-ink">{tour.listing.address}</h2>
           <p className="text-base text-muted">
-            {tour.listing.neighborhood} · {money(tour.listing.price)}/mo · {tour.listing.beds} bd
+            {area(tour.listing)} · {money(tour.listing.price)}/mo · {tour.listing.beds} bd
           </p>
           <h3 className="pt-3 text-[22px] font-bold text-ink">
             {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}

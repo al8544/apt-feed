@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { getStash, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
-import { money, specs } from '@/lib/format';
+import { money, specs, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 import Icon, { type IconName } from './Icon';
 
@@ -274,7 +274,7 @@ function SwipeCard({
           <p className="flex items-center gap-1 text-[17px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/pin.svg" alt="" width={16} height={16} />
-            {listing.address} · {listing.neighborhood}
+            {listing.address} · {area(listing)}
           </p>
         </div>
       </ListingPhoto>

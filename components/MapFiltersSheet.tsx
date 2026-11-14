@@ -20,9 +20,9 @@ export type Filters = {
   query: string; // from the map search bar: address or neighborhood contains this
 };
 
-// Search-bar text match on address or neighborhood (case-insensitive).
-export const matchesQuery = (l: Pick<GroupListing, 'address' | 'neighborhood'>, q: string) =>
-  `${l.address} ${l.neighborhood}`.toLowerCase().includes(q.trim().toLowerCase());
+// Search-bar text match on address, neighborhood or community name (case-insensitive).
+export const matchesQuery = (l: Pick<GroupListing, 'address' | 'neighborhood' | 'community_name'>, q: string) =>
+  `${l.address} ${l.neighborhood ?? ''} ${l.community_name ?? ''}`.toLowerCase().includes(q.trim().toLowerCase());
 
 export const NO_FILTERS: Filters = {
   minPrice: null,
@@ -109,7 +109,7 @@ function FiltersBody({
   const set = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, ...patch }));
   const prices = listings.map((l) => l.price);
   const lo = Math.floor(Math.min(...prices, 1000) / STEP) * STEP;
-  const hi = Math.ceil(Math.max(...prices, 5000) / STEP) * STEP;
+  const hi = Math.min(Math.ceil(Math.max(...prices, 5000) / STEP) * STEP, 8000); // LA has a few $15k+ outliers; no max price still shows them
   const min = draft.minPrice ?? lo;
   const max = draft.maxPrice ?? hi;
   const count = applyFilters(listings, draft, mine).length;

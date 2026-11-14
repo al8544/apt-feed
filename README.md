@@ -58,6 +58,36 @@ real users. Drop it when auth lands (ticket T9); the policies in `0003_rls.sql` 
 The schema file was reconstructed from `lib/api.ts` and the live data, not dumped from the database. Compare it with
 `supabase db dump --schema public` before relying on it.
 
+## CoStar listings (ticket T3)
+
+Real Los Angeles floor plans come from the CoStar kit. Put the zip anywhere and set `COSTAR_KIT_ZIP` and
+`COSTAR_ZIP_PASSWORD` in `.env.local` (never commit them; `data/` is gitignored), or extract it into `data/costar-kit/`.
+
+```bash
+node scripts/ingest-costar.ts            # dry run: reads the kit, prints the report, touches no database
+node --test lib/costar/map.test.ts       # unit tests for the mapping
+```
+
+To load a database, use a **test** database first (local `supabase start` + `supabase db reset`, or a second
+project), put its URL and service-role key in `.env.ingest` as `INGEST_SUPABASE_URL` and
+`INGEST_SUPABASE_SERVICE_ROLE_KEY`, apply `0004_costar.sql`, then:
+
+```bash
+node --env-file=.env.ingest scripts/ingest-costar.ts --write --confirm <that-database-host>
+```
+
+Safe to re-run: it upserts on the CoStar ids and never deletes (plans missing from a later kit get `active = false`).
+It refuses to write unless `--confirm` repeats the host, and refuses the project in `.env.local` unless `--allow-live`.
+The map and swipe deck read the view `listing_cards` (migration `0005`): one card per community, its cheapest active
+floor plan, so 739 LA cards instead of 6,543 plans. Votes stay on the floor plan.
+
+**Cutover from the Brooklyn seed (ticket T4)** is deliberately not a migration. `supabase/cutover-brooklyn-to-la.sql`
+deletes all swipes, stash, tours, attendees and messages and the Brooklyn listings, and rewrites the demo people for
+LA. Do it in this order, on a test database first and a backed-up real one after: `0004`, ingest, `0005`, the cutover
+file, then deploy the app. To run the app against a local database, start it with
+`NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run dev` (shell variables beat `.env.local`).
+The Maps key only works on port 3000.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

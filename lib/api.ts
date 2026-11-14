@@ -27,9 +27,13 @@ export const GROUP_ID = '00000000-0000-0000-0000-0000000000a1';
 
 // ---------- Types ----------
 export type Listing = {
-  id: string; address: string; neighborhood: string;
-  price: number; beds: number; baths: number; sqft: number; pets: boolean;
+  id: string; address: string;
+  neighborhood: string | null;   // null = unknown (CoStar has none; derived later)
+  price: number; beds: number; baths: number;
+  sqft: number | null;
+  pets: boolean | null;          // null = unknown, not "no"
   lat: number; lng: number; photos: string[];
+  community_name?: string | null; // set on rows from listing_cards
 };
 
 export type Profile = {
@@ -57,6 +61,8 @@ export type Message = {
 export type MapFilters = { likedByGroup?: boolean; maxPrice?: number; minBeds?: number; pets?: boolean };
 
 const LISTING_COLS = 'id,address,neighborhood,price,beds,baths,sqft,pets,lat,lng,photos';
+// The map and deck read one card per community (view listing_cards, migration 0005).
+const CARD_COLS = `${LISTING_COLS},community_name`;
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -79,7 +85,10 @@ export function groupMatch(l: Listing, members: Profile[]): Match {
   const needsPets = members.some((m) => m.pets);
   const hoods = new Set(members.flatMap((m) => m.neighborhoods ?? []));
 
-  const checks = [l.price <= avgBudget, l.beds >= minBeds, !needsPets || l.pets, hoods.has(l.neighborhood)];
+  // Unknown is not "no": a listing with no pet policy or neighborhood is not checked on that, rather than failed.
+  const checks = [l.price <= avgBudget, l.beds >= minBeds];
+  if (l.pets != null) checks.push(!needsPets || l.pets);
+  if (l.neighborhood != null) checks.push(hoods.has(l.neighborhood));
   const met = checks.filter(Boolean).length;
   return { met, total: checks.length, pct: Math.round((met / checks.length) * 100) };
 }
@@ -142,7 +151,7 @@ export async function getSwipeDeck(limit = 20, review?: 'right' | 'left'): Promi
     await supabase.from('swipes').select('listing_id, direction').eq('user_id', CURRENT_USER_ID)
   ) as { listing_id: string; direction: 'left' | 'right' }[];
   const dirs = new Map(swiped.map((s) => [s.listing_id, s.direction]));
-  const listings = (check(await supabase.from('listings').select(LISTING_COLS)) as Listing[]).filter((l) =>
+  const listings = (check(await supabase.from('listing_cards').select(CARD_COLS)) as Listing[]).filter((l) =>
     review ? dirs.get(l.id) === review : !dirs.has(l.id)
   );
   const decorated = await decorate(listings);
@@ -186,7 +195,7 @@ export async function getStash(): Promise<Listing[]> {
 
 // ---------- Map ----------
 export async function getMapListings(filters: MapFilters = {}): Promise<GroupListing[]> {
-  let q = supabase.from('listings').select(LISTING_COLS);
+  let q = supabase.from('listing_cards').select(CARD_COLS);
   if (filters.maxPrice) q = q.lte('price', filters.maxPrice);
   if (filters.minBeds) q = q.gte('beds', filters.minBeds);
   if (filters.pets) q = q.eq('pets', true);

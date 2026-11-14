@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { GroupListing } from '@/lib/api';
-import { money } from '@/lib/format';
+import { money, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 
 // Figma "Ranking Row". Vote fill = share of the flock that liked it (track is 64px).
@@ -35,7 +35,7 @@ export default function RankingRow({
           {money(l.price)} · {l.beds} bd
         </p>
         <p className="truncate text-lg text-muted">
-          {l.address} · {l.neighborhood}
+          {l.address} · {area(l)}
         </p>
         <div className="flex items-center gap-2 pt-[5px]">
           <div className="h-[5px] w-16 overflow-hidden rounded-[3px] bg-surface">

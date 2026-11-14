@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CURRENT_USER_ID, getGroupMembers, getMapListings, type GroupListing } from '@/lib/api';
-import { money } from '@/lib/format';
+import { money, area } from '@/lib/format';
 import {
   METRICS,
   evenWeights,
@@ -189,7 +189,7 @@ export default function ComparePage() {
                 <div className="h-[79px] overflow-hidden px-2.5 pt-1.5 leading-tight">
                   <p className="text-xl font-bold text-ink">{money(l.price)}</p>
                   <p className="truncate text-sm text-muted">{l.address}</p>
-                  <p className="truncate text-sm text-muted">{l.neighborhood}</p>
+                  <p className="truncate text-sm text-muted">{area(l)}</p>
                 </div>
                 {rows.map((r) => (
                   <div key={r.key} className="flex h-11 items-center justify-center border-t border-line">
@@ -255,7 +255,7 @@ function Cell({
       content = `${l.beds} / ${l.baths}`;
       break;
     case 'sqft':
-      content = l.sqft.toLocaleString('en-US');
+      content = l.sqft ? l.sqft.toLocaleString('en-US') : '–';
       break;
     case 'ppsf':
       content = l.sqft ? `$${(l.price / l.sqft).toFixed(2)}` : '–';
@@ -276,7 +276,7 @@ function Cell({
       );
       break;
     case 'pets':
-      content = l.pets ? 'Yes' : <span className="text-faded">No</span>;
+      content = l.pets == null ? <span className="text-faded">Unknown</span> : l.pets ? 'Yes' : <span className="text-faded">No</span>;
       break;
   }
   return (
