@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getStash, type Listing } from '@/lib/api';
-import { GROUP_NAME, money } from '@/lib/format';
+import { FLOCK_NAME, getStash, type Listing } from '@/lib/api';
+import { money } from '@/lib/format';
 import ListingPhoto from '@/components/ListingPhoto';
 import NavBar from '@/components/NavBar';
 
@@ -36,7 +36,7 @@ export default function StashPage() {
               <ListingPhoto listing={l} rough className="mb-1 h-[110px] w-full rounded-md" />
               <p className="text-xl font-bold text-ink">{money(l.price)}/mo</p>
               <p className="truncate text-[15px] text-muted">{l.address}</p>
-              <span className="w-fit rounded-[5px] bg-accent-soft px-2 py-0.5 text-[13px] font-bold text-accent">{GROUP_NAME}</span>
+              <span className="w-fit rounded-[5px] bg-accent-soft px-2 py-0.5 text-[13px] font-bold text-accent">{FLOCK_NAME}</span>
             </Link>
           ))}
         </div>
