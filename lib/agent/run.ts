@@ -29,7 +29,7 @@ export async function runFeedback(opts: { db: SupabaseClient; userId: string; fl
   const store = supabaseStore(db);
   for (const reason of listingId ? (reasons ?? []) : []) await store.recordFeedback(flockId, userId, listingId!, reason);
   const result = await rerunShortlist(store, flockId);
-  db.from('agent_runs').insert({ flock_id: flockId, user_id: userId, request: listingId ? `feedback: ${(reasons ?? []).join(', ')}` : 'membership change', steps: ['process_feedback'], result_summary: `${result.savedIds.length} picks` }).then(() => {}, () => {});
+  db.from('agent_runs').insert({ flock_id: flockId, user_id: userId, request: listingId ? `feedback: ${(reasons ?? []).join(', ')}` : 'membership change', steps: ['process_feedback'], result_summary: `${result.outcome}: ${result.savedIds.length} picks` }).then(() => {}, () => {});
   return result;
 }
 

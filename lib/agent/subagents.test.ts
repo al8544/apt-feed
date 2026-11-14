@@ -8,6 +8,7 @@ import { AIMessage } from '@langchain/core/messages';
 import { fakeModel } from '@langchain/core/testing';
 import { MemorySaver } from '@langchain/langgraph';
 import { rerunShortlist } from './feedback.ts';
+import { feedbackMessage } from '../format.ts';
 import { createFlockAgent, threadId } from './flock-agent.ts';
 import { feedbackInput, type AgentEvent } from './schemas.ts';
 import { memoryStore, supabaseStore, type Plan } from './store.ts';
@@ -143,4 +144,51 @@ test('without the pins migration the distance lookup fails quietly instead of fa
   const store = seed();
   await store.recordFeedback(FLOCK, U(1), P(1), 'too far');
   assert.deepEqual((await rerunShortlist(store, FLOCK)).savedIds, [2, 9, 3, 4].map(P));
+});
+
+const baseNeeds = () => ({ size: 3, members, bedroomsNeeded: 3, areas: [], needsPets: false, dealbreakers: [] });
+
+test('a "too expensive" said before the newest member joined expires; the other reasons stay', async () => {
+  const store = memoryStore({ plans: plans(), needs: { ...baseNeeds(), membersChangedAt: '2026-06-01T00:00:00Z' } });
+  assert.deepEqual((await rerunShortlist(store, FLOCK)).savedIds, [1, 8, 2, 9, 3].map(P));
+  await store.recordFeedback(FLOCK, U(1), P(2), 'too expensive');
+  store.feedbackLog[0]!.createdAt = '2026-05-01T00:00:00Z'; // said before the group changed
+  const stale = await rerunShortlist(store, FLOCK);
+  assert.deepEqual([stale.savedIds, stale.outcome], [[1, 8, 2, 9, 3].map(P), 'unchanged'], 'the old budget complaint no longer applies');
+  store.feedbackLog[0]!.createdAt = '2026-07-01T00:00:00Z'; // said after
+  const fresh = await rerunShortlist(store, FLOCK);
+  assert.deepEqual([fresh.savedIds, fresh.outcome, fresh.removed, fresh.added], [[1, 8].map(P), 'updated', 3, 0]);
+  // a reason that is about the place itself does not expire when the group changes
+  const place = memoryStore({ plans: plans(), needs: { ...baseNeeds(), membersChangedAt: '2026-06-01T00:00:00Z' } });
+  await place.recordFeedback(FLOCK, U(1), P(3), 'no pets');
+  place.feedbackLog[0]!.createdAt = '2026-05-01T00:00:00Z';
+  assert.ok(!(await rerunShortlist(place, FLOCK)).savedIds.includes(P(3)), 'plan 3 stays out');
+});
+
+test('feedback from someone who left the flock is ignored', async () => {
+  const store = seed();
+  await store.recordFeedback(FLOCK, U(7), P(2), 'too far'); // U(7) is not an active member
+  const r = await rerunShortlist(store, FLOCK);
+  assert.deepEqual([r.savedIds, r.ruledOutBy], [[1, 8, 2, 9, 3].map(P), []]);
+});
+
+test('the refresh says what happened: updated, unchanged, nothing fits, or no budget', async () => {
+  const store = seed();
+  const first = await rerunShortlist(store, FLOCK);
+  assert.deepEqual([first.outcome, first.added, first.removed], ['updated', 5, 0]);
+  assert.equal((await rerunShortlist(store, FLOCK)).outcome, 'unchanged');
+  await store.recordFeedback(FLOCK, U(1), P(1), 'too expensive'); // the cheapest plan: nothing is cheaper
+  const none = await rerunShortlist(store, FLOCK);
+  assert.deepEqual([none.outcome, none.savedIds, store.saved.size], ['nothing-fits', [], 5], 'the old shortlist is kept');
+
+  const noBudget = memoryStore({ plans: plans(), needs: { ...baseNeeds(), members: members.map((m) => ({ ...m, budgetMax: null })) } });
+  await noBudget.saveShortlist(FLOCK, [{ listingId: P(1), explanation: 'kept', criteria: [] }]);
+  const r = await rerunShortlist(noBudget, FLOCK);
+  assert.deepEqual([r.outcome, r.savedIds, noBudget.saved.size], ['no-budget', [], 1], 'nothing is searched or changed without a budget');
+
+  assert.equal(feedbackMessage({ outcome: 'updated', added: 1, removed: 2 }), 'Picks updated · 1 new, 2 dropped');
+  assert.equal(feedbackMessage({ outcome: 'updated', added: 0, removed: 1 }), 'Picks updated · 1 dropped');
+  assert.match(feedbackMessage({ outcome: 'no-budget', added: 0, removed: 0 }), /Add a budget/);
+  assert.match(feedbackMessage({ outcome: 'nothing-fits', added: 0, removed: 0 }), /Nothing else fits/);
+  assert.match(feedbackMessage({ outcome: 'unchanged', added: 0, removed: 0 }), /nothing changed/);
 });

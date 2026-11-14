@@ -103,6 +103,15 @@ start the app with `OPENAI_API_KEY=dummy AGENT_DAILY_LIMIT=3 npm run dev:local` 
 The database-side tests refuse to run once `dev-open-access.sql` is applied, so run them right after `supabase db reset`, then reload
 the LA data, the galleries, the open-access file and the cutover for the demo.
 
+## Test the commute pins
+
+```bash
+node scripts/test-pins.mjs
+```
+
+Creates throwaway users and flocks (friends and open), checks that flockmates can see a pin and the distances to it, that strangers cannot, and that
+nobody can change another person's pin, then deletes everything. Needs migrations `0018` and `0019`. It refuses to run against anything but 127.0.0.1.
+
 ## Check row-level security
 
 ```bash
@@ -112,6 +121,25 @@ node scripts/check-rls.mjs
 ```
 
 It passes on a database with only the migrations. It fails on purpose once `dev-open-access.sql` is applied.
+
+## Keep your local database in step with the migrations
+
+If a feature fails with `Could not find the table 'public.…' in the schema cache` or `Could not find the function …`, your local database is missing a
+migration (they are applied by hand here, so `supabase migration list` does not show them). Apply the missing file to the local database only, then reload the
+API's schema cache. This is safe to do and keeps your data; `supabase db reset` is not needed and would delete it:
+
+```bash
+docker exec -i supabase_db_flock psql -U postgres -v ON_ERROR_STOP=1 -1 < supabase/migrations/0019_share_pins.sql
+docker exec -i supabase_db_flock psql -U postgres -c "notify pgrst, 'reload schema'"
+```
+
+Quick check of what is missing (an empty answer means nothing is):
+
+```bash
+docker exec -i supabase_db_flock psql -U postgres -t -c "select t from unnest(array['shortlist','agent_usage','proposals','aerial_queries','places','member_pins']) t where to_regclass('public.'||t) is null"
+```
+
+The thumbs-down refresh needs `0012_agent.sql` (the `shortlist` table); the pin sheet needs `0018` and `0019`.
 
 ## Troubleshooting
 

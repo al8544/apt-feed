@@ -116,7 +116,7 @@ async function json<T>(res: Response): Promise<T> {
 
 export { REASONS as FEEDBACK_REASONS } from './agent/feedback';
 
-// The commute pin: where you travel to most. Private to you (row-level security); the flock only ever gets distances (migration 0018).
+// The commute pin: where you travel to most. You change it; your flockmates can see it, in friends and open flocks alike (migrations 0018, 0019).
 export type Pin = { lat: number; lng: number; label: string | null };
 export async function getMyPin(): Promise<Pin | null> {
   return (check(await supabase.from('member_pins').select('lat,lng,label').eq('user_id', CURRENT_USER_ID).maybeSingle()) as Pin | null) ?? null;
@@ -129,8 +129,9 @@ export async function clearMyPin(): Promise<void> {
 }
 
 // 02e: after a thumbs-down, tell the agent why. It searches again without what the reasons rule out and updates the flock's shortlist.
-export async function sendFeedback(listingId: string, reasons: string[]): Promise<void> {
-  await json(await authFetch('/api/agent/feedback', { method: 'POST', body: JSON.stringify({ flockId: GROUP_ID, listingId, reasons }) }));
+export type FeedbackResult = { outcome: 'updated' | 'unchanged' | 'nothing-fits' | 'no-budget'; added: number; removed: number };
+export async function sendFeedback(listingId: string, reasons: string[]): Promise<FeedbackResult> {
+  return json<FeedbackResult>(await authFetch('/api/agent/feedback', { method: 'POST', body: JSON.stringify({ flockId: GROUP_ID, listingId, reasons }) }));
 }
 
 // 00f / 00h: create a flock; the caller becomes its admin. Body is validated by lib/flocks.ts on the server.

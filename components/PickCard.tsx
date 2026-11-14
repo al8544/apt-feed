@@ -6,21 +6,21 @@ import Icon from './Icon';
 import ListingPhoto from './ListingPhoto';
 
 // Figma "Pick Card": a listing someone in your flock liked.
-// Faces = who liked it; pill = share of flock that liked it. Calendar = plan a tour, bookmark = stash.
+// Faces = who liked it; pill = share of flock that liked it. Calendar = plan a tour, thumbs-up = your like.
 export default function PickCard({
   listing,
   badge,
   groupSize,
-  stashed,
+  liked,
   onTour,
-  onStash,
+  onLike,
 }: {
   listing: GroupListing;
   badge?: string;
   groupSize: number;
-  stashed: boolean;
+  liked: boolean;
   onTour: () => void;
-  onStash: () => void;
+  onLike: () => void;
 }) {
   return (
     <article className="rough flex w-full flex-col rounded-lg">
@@ -34,16 +34,21 @@ export default function PickCard({
       <div className="flex flex-col gap-0.5 px-3.5 pt-3 pb-3.5">
         <div className="flex items-center gap-2">
           <p className="flex-1 text-2xl font-bold text-ink">{money(listing.price)}/mo</p>
-          <button onClick={onTour} aria-label="Book a tour" className="text-ink">
+          <button onClick={onTour} aria-label="Book a tour" className="flex text-ink">
             <Icon name="calendar" />
           </button>
           <button
-            onClick={onStash}
-            aria-label={stashed ? 'Remove from stash' : 'Stash'}
-            aria-pressed={stashed}
-            className={stashed ? 'text-accent' : 'text-ink'}
+            onClick={onLike}
+            aria-label={liked ? 'Remove my like' : 'Like'}
+            aria-pressed={liked}
+            className={`flex ${liked ? 'text-accent' : 'text-ink'}`}
           >
-            <Icon name="save" />
+            {/* Liked: the dark green outline over a pale green fill, the same colors as the vote pill below. */}
+            {/* A 22px box like the calendar's, with the thumb a little smaller inside it so both sit on the same center line. */}
+            <span className="relative flex size-[22px] items-center justify-center">
+              {liked && <Icon name="thumbsUpFill" scale={21 / 32} className="absolute text-accent-soft" />}
+              <Icon name="thumbsUp" scale={21 / 32} className="relative" />
+            </span>
           </button>
         </div>
         <p className="text-base text-ink">{specs(listing)}</p>

@@ -11,8 +11,10 @@ const ICONS = {
   save: ['save.png', 22, 22, 22, 0, 0],
   saveLg: ['save-lg.png', 30, 30, 30, 0, 0],
   thumbsUp: ['thumbsup.png', 32, 32, 32, 0, 0],
+  thumbsUpFill: ['thumbsup-fill.png', 32, 32, 32, 0, 0], // the same shape as a solid silhouette, to sit under the outline
   thumbsDown: ['thumbsdown.png', 32, 32, 32, 0, 0],
   undo: ['undo.png', 28, 28, 28, 0, 0],
+  pass: ['pass.svg', 30, 30, 30, 0, 0],
   back: ['back.png', 26, 26, 26, 0, 0],
 } as const;
 

@@ -41,7 +41,7 @@ The schema, demo data and row-level security live in `supabase/` so anyone can r
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>
-supabase db push                                   # applies every file in supabase/migrations in order (0001 to 0013)
+supabase db push                                   # applies every file in supabase/migrations in order (0001 to 0019)
 psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQL editor; see below
 ```
 
@@ -171,6 +171,34 @@ Polite by design: one request at a time with a 4 to 8 second pause, honest User-
 disk, and it **stops** if a page shows a CAPTCHA or blocks it. `APARTMENTS_COM_ENRICH=off` is the kill switch. Needs migration
 `0006`. The swipe deck flips through the gallery (tap the photo's left or right edge) with a "Photo: Apartments.com" credit,
 and a photo that fails to load falls back to the gradient.
+
+## Thumbs-down reasons, Pass and Like (ticket T13)
+
+After a thumbs-down on the reels, a "Why the nope?" sheet offers reason chips (too far, too expensive, no pets, too small, bad photos, not my area, other).
+`POST /api/agent/feedback` records them and `rerunShortlist` (`lib/agent/feedback.ts`, plain code, no model call) searches again without what the
+reasons rule out and saves the top 5. The same refresh runs when someone joins the flock (not yet when someone leaves). The person is told what happened: picks updated, nothing
+changed, nothing else fits (the old shortlist is kept), or no budget set. A "too expensive" expires when a newer member joins, and feedback from people
+who left is ignored. `lib/agent/subagents.ts` holds the `apartment-searcher` and a read-only `roommate-matcher`. Design: `docs/DESIGN.md` §8.3a.
+
+On the UI side the Stash button is gone. The reels have **Pass** (skip with no vote; the place can come back next visit), Flock picks and the listing
+detail have **Like** (your thumbs-up vote), and sheets can be dragged down to close.
+
+```bash
+node --test lib/agent/subagents.test.ts   # three profiles, ten floor plans, every reason, outcomes, expiry; no database, no key
+```
+
+## Commute pins
+
+Set a pin for where you travel to most from **Account → Commute pin** or **Flock → Flock preferences → Commute pin**: search an address (OpenStreetMap's
+free search, no key; the address is not stored, only the point) or tap the map. **Your flockmates can see your pin**, in friends and open flocks alike;
+strangers cannot. The listing page shows how far the place is from your pin, and "too far" feedback uses the distance to the flock's pins
+(`flock_pin_distances`; with no pins it falls back to the same community). The distance is straight-line, not a route.
+
+Needs migrations `0018_member_pins.sql` and `0019_share_pins.sql`. Without them everything else still works; the pin sheet just cannot save.
+
+```bash
+node scripts/test-pins.mjs    # local database: flockmates see pins and distances, strangers do not, nobody edits another's pin
+```
 
 ## Learn More
 
