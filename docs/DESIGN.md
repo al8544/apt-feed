@@ -7,7 +7,7 @@ Last updated 2026-11-14. Written from the code in `apt-feed/` and the Figma file
 >
 > **Core idea:** find your people, then find your place.
 >
-> **Tracks:** CoStar ("Inside and Out") and LangChain **Deep Agents** ("build a deep agent for any use case"). All agentic behavior (group matching, apartment search, aerial checks, shortlist updates, the search bar's "Ducktect best option") runs on one Deep Agent built with `deepagents` (§8). CoStar kit + apartments.com images + Vexcel aerial imagery are the data.
+> **Tracks:** CoStar ("Inside and Out") and LangChain **Deep Agents** ("build a deep agent for any use case"). All agentic behavior (group matching, apartment search, aerial checks, shortlist updates, the search bar's "Ask Ducktective") runs on one Deep Agent built with `deepagents` (§8). CoStar kit + apartments.com images + Vexcel aerial imagery are the data.
 
 Tags used below: **[built]** exists in code today · **[figma]** designed, not in code · **[planned]** proposed here · **[verify]** a fact we have not confirmed (usually about the CoStar kit).
 
@@ -38,7 +38,7 @@ Tags used below: **[built]** exists in code today · **[figma]** designed, not i
 | Book / see tours | 04 Calendar **[built]**, 01a/01b Book Tour sheet **[figma]** (a `BookTourSheet` component exists **[built]**) | |
 | Rank and compare | 05 Flock, 08 Compare **[built]** | Score weights per the Figma dev note |
 | Account and prefs | 06 Account **[built]** | |
-| Search, including **"Ducktect best option"** | `MapSearch` search bar **[built]**; the Ducktect option **[planned]**, not yet in Figma | Type anything; pick "Ducktect best option" and the agent finds and explains the best match using CoStar listings + Vexcel aerial imagery (§8.9) |
+| Search, including **"Ask Ducktective"** | `MapSearch` search bar **[built]**; the Ducktect option **[planned]**, not yet in Figma | Type anything; pick "Ask Ducktective" and the agent finds and explains the best match using CoStar listings + Vexcel aerial imagery (§8.9) |
 
 ### 2.2 Friends flock vs Open flock
 
@@ -707,9 +707,9 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 - A thumbs-down is written to `swipes` directly (with an optional reason chip); the client then calls `POST /api/agent/feedback`, which records the reasons in `flock_feedback` and runs `rerunShortlist` (§8.3a, plain code, no model call): re-search without what the reasons rule out and update the shortlist. The removal rule (§7.3) is separate. Everyone sees the change through realtime (§11).
 - A change in membership triggers the same task once to review the shortlist against the new combined budget.
 
-### 8.9 Ducktect best option (search bar)
+### 8.9 Ask Ducktective (search bar)
 
-**Status (T15, built and run with a real model and live Vexcel; local database only).** It runs only when someone picks the **"Ducktect best option"** row in the search bar (pinned on top, the typed text quoted beneath it; Enter still takes the first home or place, so an address search never starts it). Plain search, filters and map browsing are unchanged. The request is general: it can be about a feature of the home, the way someone lives, or a kind of place they want near or away.
+**Status (T15, built and run with a real model and live Vexcel; local database only).** It runs only when someone picks the **"Ask Ducktective"** row in the search bar (pinned on top, the typed text quoted beneath it; Enter still takes the first home or place, so an address search never starts it). Plain search, filters and map browsing are unchanged. The request is general: it can be about a feature of the home, the way someone lives, or a kind of place they want near or away.
 
 *The flow (a Deep Agent, `lib/agent/ducktect-agent.ts`, read-only):*
 
@@ -737,7 +737,7 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 
 **Today.** `components/MapSearch.tsx` **[built]** is one combobox with three option kinds: matching homes (client-side `matchesQuery`), "Show all N matching homes", and Google Places predictions.
 
-**Change.** Add a fourth option, `{ kind: 'ducktect', text }`, pinned at the **top** of the dropdown whenever the user has typed something. Label: **"Ducktect best option"**, with the typed text quoted beneath it. It is reachable by keyboard like the others. A new prop `onDucktect(text)` hands the text to the map page. The spelling "Ducktect" is as written by the team; confirm before it ships (§15).
+**Change.** Add a fourth option, `{ kind: 'ducktect', text }`, pinned at the **top** of the dropdown whenever the user has typed something. Label: **"Ask Ducktective"**, with the typed text quoted beneath it. It is reachable by keyboard like the others. A new prop `onDucktect(text)` hands the text to the map page. The spelling "Ducktect" is as written by the team; confirm before it ships (§15).
 
 **Flow**
 
@@ -791,7 +791,7 @@ export const DucktectResult = z.object({
 | `POST /api/agent/resume` | Approve or reject a paused action (e.g. invites) |
 | `POST /api/agent/feedback` | `{ flockId, listingId, reasons }` after a thumbs-down, or `{ flockId }` alone for a membership change. Runs `rerunShortlist` (no model call, no key needed, outside the agent's daily budget) and answers `{ savedIds, ruledOutBy, outcome, added, removed }`. Joining a flock triggers the same refresh |
 | `POST /api/proposals/[id]/respond` | Accept or decline an agent-proposed group; creates the flock when all accept |
-| `POST /api/ducktect` | Read-only agent for the search bar's "Ducktect best option"; streams steps, returns ranked picks |
+| `POST /api/ducktect` | Read-only agent for the search bar's "Ask Ducktective"; streams steps, returns ranked picks |
 | `POST /api/flocks` | Create flock (friends/open) with validation. The creator is an active admin in the same transaction, whether or not anyone else has accepted yet |
 | `POST /api/flocks/[id]/join` | Calls the `join_flock` database function (one transaction: lock, rules, `max_size`) |
 | `POST /api/flocks/[id]/invites` | Invite by username/email |
@@ -845,7 +845,7 @@ Order is by what the demo needs; the demo path is bold.
 | 2 Image enrichment | Permission note; `enrich-apartments-com.ts` for the demo properties first; gallery in `ListingReel`; photo credit | Demo listings have several photos, and the app looks fine without them |
 | **3 Flocks and matching** | `flocks`/`flock_members` migration; `swipes.flock_id` and thumbs votes; `proposals`; `join_flock`; Friends/Open creation; `compat`, `listing-fit`; seeded fictional profiles for the demo | Create a flock, join an open one by rules, see why a place fits |
 | **4 Deep Agent** (T12, T13 built) | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs` | "We need 3 bedrooms under $4,700" yields a roommate proposal and a saved, explained shortlist |
-| **5 Vexcel + Ducktect** | `lib/enrich/vexcel.ts`, `aerial_queries`, `aerial-evidence` subagent, pre-warm script; "Ducktect best option" in `MapSearch`; `/api/ducktect`; result sheet and map restyle | Typing a prose wish and picking Ducktect returns ranked picks with aerial evidence |
+| **5 Vexcel + Ducktect** | `lib/enrich/vexcel.ts`, `aerial_queries`, `aerial-evidence` subagent, pre-warm script; "Ask Ducktective" in `MapSearch`; `/api/ducktect`; result sheet and map restyle | Typing a prose wish and picking Ducktect returns ranked picks with aerial evidence |
 | 6 Auth | Supabase Auth screens, `proxy.ts`, remove hard-coded ids, demo switcher behind a flag | Real sign-in works; two phones still demo |
 | 7 Optional | Rent split by room; tour slots; comparison polish; LangSmith traces; Deep Agents memory | Only if time remains |
 
@@ -858,7 +858,7 @@ Order is by what the demo needs; the demo path is bold.
 1. **0:00** The problem: you need compatible people *and* an apartment that fits all of them.
 2. **0:20** Sign in, open Your Flocks; create an Open flock with a short, wordy profile and join rules.
 3. **0:45** (agent entry point to be decided) "Three of us, $4,700 combined, three bedrooms." The Deep Agent's roommate-matcher proposes a group; the user approves the invites and the flock accepts.
-4. **1:10** In the map search bar, type "sunny 3 bed with a pool and trees near a park" and pick **Ducktect best option**. The searcher splits hard filters from visual phrases; the aerial-evidence subagent checks Vexcel imagery around the CoStar candidates; the best option appears with its aerial thumbnail and evidence line (photos from the kit and apartments.com). Add it to flock picks.
+4. **1:10** In the map search bar, type "sunny 3 bed with a pool and trees near a park" and pick **Ask Ducktective**. The searcher splits hard filters from visual phrases; the aerial-evidence subagent checks Vexcel imagery around the CoStar candidates; the best option appears with its aerial thumbnail and evidence line (photos from the kit and apartments.com). Add it to flock picks.
 5. **1:35** A roommate rejects one; the shortlist updates live on the other phone.
 6. **1:55** "Flock finds your people and your place, with real property data and an agent that takes action."
 
@@ -874,7 +874,7 @@ Order is by what the demo needs; the demo path is bold.
 4. **Tours are simulated** until a real source exists (§9).
 5. **Photos: hotlink or copy to Supabase Storage** (§6.2). Copy is more reliable for the demo. **Current state: hotlinked** from CoStar's CDN (it works in testing); copying is not built. Revisit if images break before the demo.
 6. **Agent hosting.** A long-lived Node server for the demo (§8.6), or add a durable checkpointer.
-7. **Ducktect label and placement.** "Ducktect best option" is spelled as written by the team; confirm, then add the dropdown state and result sheet to Figma.
+7. **Ducktect label and placement.** "Ask Ducktective" is spelled as written by the team; confirm, then add the dropdown state and result sheet to Figma.
 8. **Settled:** a place is feasible if the flock's combined budget covers the rent, and flocks are any size from 2 up (3 is fine; nothing assumes 4).
 9. **Settled:** voting is thumbs up / thumbs down (§2.3).
 10. **Defaults chosen in this patch (confirm or change):** one card or pin per *community* showing the best-fitting floor plan, with votes and shortlist items on the floor plan; a place leaves the active shortlist when thumbs-down reaches half the flock (rounded up); a group proposal needs every invitee to accept, with a "continue as a smaller flock?" prompt if someone declines; the Brooklyn seed rows are wiped at cutover; tools use a user-scoped Supabase client; per-user rate limits on agent endpoints.

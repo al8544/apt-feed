@@ -206,7 +206,7 @@ export default function MapSearch({
                     <>
                       <Ducktective height={34} />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[19px] leading-tight font-bold text-ink">Ducktect best option</span>
+                        <span className="block text-[19px] leading-tight font-bold text-ink">Ask Ducktective</span>
                         <span className="block truncate text-[14px] text-muted">“{o.text}”</span>
                       </span>
                     </>

@@ -7,7 +7,7 @@ import ListingPhoto from './ListingPhoto';
 export default function ListingCard({ listing, className = '' }: { listing: GroupListing; className?: string }) {
   const [first] = listing.likedBy;
   return (
-    <Link href={`/map/${listing.id}`} className={`rough flex items-center gap-3 rounded-lg p-2.5 ${className}`}>
+    <Link href={`/map/${listing.id}`} className={`rough flex items-center hover:[--grow:1.02] gap-3 rounded-lg p-2.5 ${className}`}>
       <ListingPhoto listing={listing} className="size-24 shrink-0 rounded-md" />
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <p className="text-[21px] font-bold text-ink">{money(listing.price)}/mo</p>

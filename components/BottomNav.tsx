@@ -27,7 +27,7 @@ export default function BottomNav() {
         dark ? '[--fill:var(--color-ink)] group-has-[[data-light]]/app:[--fill:var(--color-bar)]' : '[--fill:var(--color-bar)]'
       }`}
     >
-      <ul className="flex h-16 items-start pt-2">
+      <ul className="flex h-16 items-start pt-3.5">
         {TABS.map(({ href, label, icon, match }) => {
           const active = match(pathname);
           return (
@@ -40,7 +40,7 @@ export default function BottomNav() {
               >
                 <Icon name={icon} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={active ? '/icons/dot-on.svg' : '/icons/dot-off.svg'} alt="" width={4} height={4} />
+                <img src={active ? '/icons/dot-on.svg' : '/icons/dot-off.svg'} alt="" width={4} height={4} className={`transition-transform duration-300 ${active ? 'scale-150' : ''}`} />
               </Link>
             </li>
           );
