@@ -75,6 +75,28 @@ node --test lib/flocks.test.ts          # request validation
 The app itself still acts as one flock (`GROUP_ID` in `lib/api.ts`, now sent as `flock_id`) and has no sign-in, so nothing in the UI
 calls the new routes yet (ticket T9). The old `groups`, `group_members` and `group_likes` names are gone.
 
+## The Flock agent (ticket T12)
+
+A LangChain Deep Agent (`lib/agent/`): an orchestrator that owns the writes (`update_shortlist`, `send_invites`, `process_feedback`) and an
+`apartment-searcher` subagent (`search_apartments`, `rank_apartments`, built on `lib/match`). `POST /api/agent` streams NDJSON events (plan,
+steps, tokens, tool results, approval requests); `POST /api/agent/resume` approves or rejects a paused action. The tools run as the signed-in
+caller on a user-scoped Supabase client (never the service-role key), the flock and user come from the request, the thread id is derived on the
+server, each caller gets a daily call budget (`AGENT_DAILY_LIMIT`, default 60), and every run is logged to `agent_runs`. A saved pick's
+explanation is built in code from the checks, so it cannot contain a number the tools did not return.
+
+```bash
+node --test lib/agent/agent.test.ts            # real agent graph, scripted fake model: no key, no network, no database
+node scripts/smoke-agent.ts --fake             # smoke test with the scripted model
+node --env-file=.env.local scripts/smoke-agent.ts   # smoke test on the real model, gpt-5-mini (a few cents)
+node scripts/test-agent-db.mjs                 # database side under RLS (local, migrations only: supabase db reset first)
+node scripts/test-agent-api.mjs                # HTTP gates; start `OPENAI_API_KEY=dummy AGENT_DAILY_LIMIT=3 npm run dev:local` first
+```
+
+Needs migration `0009` and `OPENAI_API_KEY` on the server; the model is `openai:gpt-5-mini`. Without the key the routes answer 503.
+`node scripts/demo-agent.mjs` runs the ticket's acceptance flow against the real model through the real routes (start `npm run dev:local` first; a few cents): the demo wish saves a shortlist, rejecting an invite pauses and resumes, no invented numbers.
+The agent keeps its threads and pauses in memory, so run it on a long-lived Node host, not serverless. There is no UI for it: the Ask Flock sheet was
+removed. The routes need a signed-in account, which arrives with T9.
+
 ## Voting and the flock score (ticket T8)
 
 Votes are thumbs up (`direction = 'right'`) or thumbs down (`'left'`), one row per person, place and flock; changing a vote

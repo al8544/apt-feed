@@ -123,7 +123,7 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 
 **Rules of the road**
 
-- Browser code keeps using `lib/api.ts`. Anything that needs a secret (Anthropic, Vexcel, service-role key) goes through a Route Handler. Secrets are never `NEXT_PUBLIC_*`.
+- Browser code keeps using `lib/api.ts`. Anything that needs a secret (OpenAI, Vexcel, service-role key) goes through a Route Handler. Secrets are never `NEXT_PUBLIC_*`.
 - Heavy or rate-limited work (kit ingestion, image enrichment) is an **offline script**, not a request-time call. The app only reads the results from Supabase.
 - Pure logic (`lib/match`, `lib/compare.ts`) has no I/O and is unit-tested.
 - The Deep Agent runs in a **Node** Route Handler on a long-lived server (`next start` or a container) rather than a short-lived serverless function; see §8.6.
@@ -522,6 +522,8 @@ Voting is **thumbs up / thumbs down** (§2.3), stored in `swipes` with a `flock_
 
 We build the agent with **LangChain Deep Agents** (`deepagents` on npm, TypeScript), the framework for the LangChain track. **All agentic behavior goes through it**: group matching, apartment search, aerial checks, shortlist updates, feedback, and Ducktect. Model calls and secrets stay on the server.
 
+**Status (T12, built; tested offline and on a local database; the acceptance flow passed on a real model, openai:gpt-5-mini):** `lib/agent/` has the orchestrator, one subagent (`apartment-searcher`; `roommate-matcher` and `aerial-evidence` are T13 and T14), and the tools `search_apartments`, `rank_apartments`, `update_shortlist`, `send_invites` (paused for approval with `interruptOn`) and `process_feedback`. `parse_preferences` is not a separate tool: the model fills the arguments of `search_apartments` directly. Saved explanations are built in code from `lib/match` criteria, so the model supplies ids only. The API is `POST /api/agent` and `POST /api/agent/resume` (NDJSON). Migration `0009_agent.sql` adds `shortlist`, a per-person daily call budget (`take_agent_call`) and `invite_to_flock`. `next.config.ts` lists the agent packages in `serverExternalPackages` because langsmith has an optional `ws` import the bundler cannot resolve. Real Deep Agents API names matched this section. Verified against a real model: `openai:gpt-5-mini` passes `scripts/smoke-agent.ts` and `scripts/demo-agent.mjs` (the demo wish saved 5 passing picks; an invite paused, rejecting sent nothing, approving invited; no number in the answer was missing from the tool results). Not verified: other models, and answer quality beyond these checks. The first run saved nothing because the model asked permission instead of acting, so the prompt now says to save without asking.
+
 ### 8.1 How we use each Deep Agents capability
 
 | Deep Agents capability | Our use |
@@ -568,7 +570,7 @@ Subagents are plain objects: `{ name, description, systemPrompt, tools, model? }
 
 ### 8.5 Runtime sketch
 
-API shapes below are from the Deep Agents JS docs (`createDeepAgent`, `systemPrompt`, `subagents`, `contextSchema`, `interruptOn`; `tool` comes from `langchain`). Install: `npm install deepagents langchain @langchain/core @langchain/anthropic zod`.
+API shapes below are from the Deep Agents JS docs (`createDeepAgent`, `systemPrompt`, `subagents`, `contextSchema`, `interruptOn`; `tool` comes from `langchain`). Install: `npm install deepagents langchain @langchain/core @langchain/openai zod`.
 
 ```ts
 // lib/agent/flock-agent.ts
@@ -602,7 +604,7 @@ const apartmentSearcher: SubAgent = {
 // roommateMatcher and aerialEvidence are defined the same way.
 
 export const flockAgent = createDeepAgent({
-  model: process.env.AGENT_MODEL ?? 'anthropic:claude-sonnet-5',   // provider:model string (see §8.6)
+  model: 'openai:gpt-5-mini',   // provider:model string (see §8.6)
   systemPrompt: FLOCK_PROMPT,
   tools: [updateShortlist, sendInvites, processFeedback],
   subagents: [roommateMatcher, apartmentSearcher, aerialEvidence],
@@ -637,7 +639,7 @@ An approval resumes the same thread: `POST /api/agent/resume` calls `flockAgent.
 ### 8.6 Runtime notes and risks **[verify]**
 
 - **Serverless.** The docs describe Deep Agents as an in-process library and do not address serverless. `MemorySaver` and `InMemoryStore` live in memory, so pauses and threads are lost across serverless invocations. For the demo, run on a long-lived Node process; for anything durable, use a persistent checkpointer. `FilesystemBackend` and `execute` sandboxes are not for serverless.
-- **Model choice.** The docs' own examples use `anthropic:claude-sonnet-5`, so that is the default. Opus 5.5 and Sonnet 5.5 reject forced `tool_choice` and non-default sampling parameters; LangChain's structured-output paths may use either. Smoke-test `responseFormat` and subagents on a candidate model before switching `AGENT_MODEL`.
+- **Model choice.** One model for now: `openai:gpt-5-mini` (needs `OPENAI_API_KEY`). It passed the T12 acceptance flow. GPT-5 models reject non-default sampling settings, so we set none; a smarter model such as `gpt-5` is a one-line change if the answers are not good enough.
 - **Docs drift.** Some JS pages still show Python-style names (`system_prompt`, `interrupt_on`). Trust the TypeScript code blocks and pin versions. `write_todos` is opt-in as of v0.7.
 - **Observability.** LangSmith tracing would let judges see plans, subagent calls and tool calls. Optional; setup per the LangSmith docs **[verify]**.
 - **Streaming shapes.** `stream` with `['updates','messages']` yields `[mode, data]` tuples. The newer `streamEvents` (version `v3`) exposes per-subagent and tool-call handles that suit the progress UI better; evaluate it once the basic stream works.
@@ -731,7 +733,7 @@ Tours: the kit has no agent contact data, so the "open tour dates from the agent
 - **Accounts.** Real profiles use `profiles.id = auth.users.id`. Seeded fictional profiles for the matching demo are `profiles` rows with no auth user, flagged `is_demo` and `discoverable`.
 - **Abuse limits.** Per-user rate limits and a daily budget on `/api/agent`, `/api/agent/feedback` and `/api/ducktect`, since each call spends model credits.
 - RLS on every table (§5.4). Service-role key only in server code and scripts.
-- Secrets: `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VEXCEL_API_KEY`, `COSTAR_ZIP_PASSWORD` are server/script only. Existing public vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID`.
+- Secrets: `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VEXCEL_API_KEY`, `COSTAR_ZIP_PASSWORD` are server/script only. Existing public vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID`.
 - Treat profile prose and scraped page text as untrusted input: never put it in a position where it can act as instructions to the agent (pass as quoted data), and never render scraped HTML.
 
 ---
@@ -757,7 +759,7 @@ Existing pattern (`subscribeToMessages`, `subscribeToGroupSwipes`) is right. Ext
 
 Order is by what the demo needs; the demo path is bold.
 
-**Where we are (as of this branch):** T1 schema, seed and RLS files written and run on a local Postgres, not diffed against a real dump; T2 done; T3 done locally; T4 code done and used locally, real-project cutover not done; T5 galleries done from the kit, Apartments.com scraper optional and unrun. Everything marked done was tested against a **local** Supabase (`docs/LOCAL_DATABASE.md`), not your real project.
+**Where we are (as of this branch):** T1 schema, seed and RLS files written and run on a local Postgres, not diffed against a real dump; T2 done; T3 done locally; T4 code done and used locally, real-project cutover not done; T5 galleries done from the kit, Apartments.com scraper optional and unrun; T6 flocks and `join_flock`; T7 matching library (`lib/match`, not yet used by the flock score); T8 thumbs voting, flock score and the removal rule with live updates; T12 agent core (`lib/agent`, `/api/agent`), whose acceptance flow passed on `openai:gpt-5-mini`; there is no UI for it (the Ask Flock sheet was removed), and the routes need sign-in (T9). Everything marked done was tested against a **local** Supabase (`docs/LOCAL_DATABASE.md`), not your real project.
 
 | Phase | Work | Done when |
 |---|---|---|
@@ -836,7 +838,7 @@ Order is by what the demo needs; the demo path is bold.
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser | existing |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` | browser | existing map |
 | `SUPABASE_SERVICE_ROLE_KEY` | server/scripts | ingestion, agent writes |
-| `ANTHROPIC_API_KEY` (read by `@langchain/anthropic`), `AGENT_MODEL` (optional, `provider:model`) | server | Deep Agent |
+| `OPENAI_API_KEY` (read by `@langchain/openai`), `AGENT_DAILY_LIMIT` (optional) | server | Deep Agent |
 | `COSTAR_KIT_ZIP` or `COSTAR_KIT_URL`, `COSTAR_ZIP_PASSWORD` | scripts | kit ingestion |
 | `APARTMENTS_COM_ENRICH` (`on`/`off`) | scripts | image enrichment kill switch |
 | `VEXCEL_API_KEY` | server/scripts | aerial evidence and Ducktect |
