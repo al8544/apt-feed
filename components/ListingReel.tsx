@@ -12,7 +12,6 @@ type Direction = 'left' | 'right';
 type CardHandle = { fling: (dir: Direction) => void };
 
 const SWIPE_THRESHOLD = 120;
-const SHADOW = '[text-shadow:0_1px_6px_rgba(0,0,0,0.35)]';
 // Content sits above the bottom nav (64px + safe area).
 const ABOVE_NAV = 'bottom-[calc(88px+env(safe-area-inset-bottom))]';
 
@@ -112,7 +111,7 @@ export default function ListingReel({
         </>
       )}
 
-      <header className={`absolute inset-x-0 top-0 flex h-11 items-center gap-2 px-4 mt-[max(10px,env(safe-area-inset-top))] ${SHADOW}`}>
+      <header className="absolute inset-x-0 top-0 flex h-11 items-center gap-2 px-4 mt-[max(10px,env(safe-area-inset-top))]">
         {header(history.length)}
         {settings && (
           <Link href="/account" aria-label="Settings">
@@ -121,7 +120,7 @@ export default function ListingReel({
         )}
       </header>
 
-      {(error ?? loadError) && <p className={`absolute inset-x-4 top-28 text-center text-base ${SHADOW}`}>{error ?? loadError}</p>}
+      {(error ?? loadError) && <p className="absolute inset-x-4 top-28 text-center text-base">{error ?? loadError}</p>}
 
       <AnimatePresence>
         {toast && (
@@ -182,8 +181,8 @@ function Action({
       aria-pressed={pressed}
       className={`flex flex-col items-center gap-1 transition active:scale-90 disabled:opacity-40 ${pressed ? 'text-accent-soft' : ''}`}
     >
-      <Icon name={icon} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]" />
-      <span className={`text-[15px] font-bold ${SHADOW}`}>{label}</span>
+      <Icon name={icon} />
+      <span className={`text-[15px] font-bold`}>{label}</span>
     </button>
   );
 }

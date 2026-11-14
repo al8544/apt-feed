@@ -20,6 +20,40 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database
+
+The schema, demo data and row-level security live in `supabase/` so anyone can rebuild the database.
+
+| File | What it does |
+|---|---|
+| `supabase/migrations/0001_schema.sql` | Tables, indexes, the `group_likes` view, realtime on `swipes` and `messages` |
+| `supabase/migrations/0002_seed.sql` | The fictional Brooklyn Crew, 45 listings, their tours and swipes |
+| `supabase/migrations/0003_rls.sql` | Row-level security on every table: group members see their group, private rows stay private, anon gets listings only |
+| `supabase/dev-open-access.sql` | Demo only: opens every table to the anon key so the app works before sign-in exists |
+| `scripts/check-rls.mjs` | Tries to read and write private rows with the anon key from `.env.local`; exits 1 if it can |
+
+**Set up a new Supabase project** (Dashboard SQL editor, or the CLI):
+
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase db push                                   # applies 0001, 0002, 0003 in order
+psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQL editor; see below
+```
+
+Then copy the project URL and anon key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+Locally: `supabase start` and `supabase db reset` rebuild everything from these files.
+
+**Until sign-in exists** the app acts as whichever person the switcher picks, using only the anon key, so with
+strict RLS it would see nothing. For demos, apply `supabase/dev-open-access.sql` after the migrations. It
+reproduces today's behavior, where the anon key can read and write every row, so never apply it to a project with
+real users. Drop it when auth lands (ticket T9); the policies in `0003_rls.sql` are already written for signed-in users.
+
+**Check security:** `node scripts/check-rls.mjs`. On a project with only the three migrations it passes. With the open-access file applied it fails on purpose.
+
+The schema file was reconstructed from `lib/api.ts` and the live data, not dumped from the database. Compare it with
+`supabase db dump --schema public` before relying on it.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
