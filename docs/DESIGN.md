@@ -70,13 +70,13 @@ A flock a person creates exists as soon as they create it, with them as its only
 |---|---|
 | `/` | Redirects to `/group` (the app opens on the flock) |
 | `/picks` | Flock Picks (group feed, live via Supabase realtime) |
-| `/reels` | For You swipe deck (`ListingReel`): tap the photo to flip, "More info ›" for the listing; end-of-deck recap with review piles; Yes / Nope toasts with Undo |
+| `/reels` | For You swipe deck (`ListingReel`): tap the photo to flip, "More info ›" for the listing; Yes / Nope / **Pass** (skip with no vote) / Back; a thumbs-down opens the "Why the nope?" reason sheet; end-of-deck recap with review piles; toasts with Undo |
 | `/map`, `/map/[id]` | Map + listing view (same deck, started at the tapped place) |
-| `/listing/[id]` | Listing detail: photo, price, who liked it, Book a tour, Stash |
+| `/listing/[id]` | Listing detail: swipeable gallery (floor plans are the last slide), price, distance from your pin, who liked it, Book a tour, **Like** (your thumbs-up) |
 | `/tours`, `/tours/[id]` | Calendar (selected day's tours above Upcoming) and tour detail (RSVP toggle, Reschedule, Cancel) |
-| `/group`, `/members`, `/invite` | Flock: rankings, preferences, member list, invite link |
+| `/group`, `/members`, `/invite` | Flock: rankings, preferences (incl. your **commute pin**), member list, invite link |
 | `/compare`, `/compare/pick` | Compare with weighted score |
-| `/account`, `/stash` | Account and My Stash |
+| `/account`, `/stash` | Account (incl. commute pin) and My Stash. Nothing adds to the stash any more: Stash buttons became Pass (reels) and Like (picks, detail) |
 
 **Tables the code uses** (now in `supabase/migrations/0001_schema.sql`, reconstructed from the code and live data, so **[verify]** it against `supabase db dump --schema public`; `listing_cards`, `communities`, `listing_media` and `listing_enrichment` were added after): `profiles`, `group_members(role)`, a group table keyed by `GROUP_ID`, `group_likes` (listing_id, likes, liked_by[]), `swipes(user_id, listing_id, direction)`, `stash`, `listings(id,address,neighborhood,price,beds,baths,sqft,pets,lat,lng,photos[])`, `tours`, `tour_attendees`, `messages`.
 
@@ -321,7 +321,12 @@ create table listing_comments (flock_id uuid, user_id uuid, listing_id uuid, bod
 create table flock_feedback (            -- rejections and reasons the agent learns from (§8.7)
   flock_id uuid references flocks on delete cascade, user_id uuid references profiles,
   listing_id uuid references listings, reason text, created_at timestamptz default now()
-);
+);                                       -- reasons are the chips in §8.3a; a "too expensive" expires when a newer member joins
+
+create table member_pins (               -- one commute pin per person (migrations 0018, 0019): where they travel to most
+  user_id uuid primary key references profiles on delete cascade,
+  lat double precision not null, lng double precision not null, label text, updated_at timestamptz default now()
+);                                       -- you change yours; people you share an active flock with can read it (friends and open flocks)
 
 create table agent_runs (                  -- audit trail: what the agent did and why
   id uuid primary key default gen_random_uuid(),
@@ -524,6 +529,8 @@ Voting is **thumbs up / thumbs down** (§2.3), stored in `swipes` with a `flock_
 
 ### 7.4 Roommate compatibility, open-flock joining, privacy
 
+**Commute pins are visible to flockmates (decision).** A person can set one pin, from Account or the flock page's preferences (address search through OpenStreetMap, or a tap on the map). Anyone who shares an active flock with them can read it, in friends and open flocks alike: row-level security on `member_pins` lets you write only your own row and read your own and your flockmates' (`shares_flock_with`). Strangers cannot read it. An earlier version (0018) hid pins and gave out distances only once two members had one, so nobody's location could be worked out; the team decided flockmates may see each other's pins, so migration 0019 removes that limit and `flock_pin_distances` works with a single pin. People who are not in a flock yet (for example someone only browsing an open flock) see nothing. The pin sheet says "Your flock can see this pin".
+
 **Status (Find a flock, agent read; local database only):** Find a flock now asks three long questions after "Your basics" (about you → `profiles.about`, what you want in roommates and a home → `profiles.looking_for`, added in `0015_looking_for.sql`, dealbreakers → `profiles.dealbreakers_text`). `POST /api/flocks/match` then has the agent (`lib/agent/matcher.ts`, one structured-output call on the same model as the flock agent) read what you wrote against each open flock's own public text and answer `strong | possible | weak` with a one or two sentence reason per flock. Code decides who may be considered; the model only judges fit in words: only flocks you already pass `compat()` for and that still have a seat are sent to it, and it never sees a member's profile, budget or habits (§7.4 privacy). Everything it returns is checked: ids it was not given are dropped, and a reason that states a dollar amount or percentage nobody gave it is replaced. It only recommends: applying is still the request button on the flock (`join_flock` files a request an admin approves, and answers `mismatch` if you clash with the flock's rules). If the agent cannot answer (no `OPENAI_API_KEY`, daily limit, model error) the page falls back to the rule-based ranking. Checked with `lib/agent/matcher.test.ts` and a stand-in model; a real model's judgement has not been tried. Roommate-matcher as a Deep Agents subagent that proposes groups (T13) is separate and still open.
 
 `compat(person, flock)` returns pass/fail per rule the owner switched on in 00h: budget overlap, bedrooms + move-in within 30 days, at least one shared area, and no clash with dealbreakers. Habits feed a soft similarity score for ranking candidates.
@@ -543,6 +550,31 @@ Voting is **thumbs up / thumbs down** (§2.3), stored in `swipes` with a `flock_
 We build the agent with **LangChain Deep Agents** (`deepagents` on npm, TypeScript), the framework for the LangChain track. **All agentic behavior goes through it**: group matching, apartment search, aerial checks, shortlist updates, feedback, and Ducktect. Model calls and secrets stay on the server.
 
 **Status (T12, built; tested offline and on a local database; the acceptance flow passed on a real model, openai:gpt-5-mini):** `lib/agent/` has the orchestrator, one subagent (`apartment-searcher`; `roommate-matcher` and `aerial-evidence` are T13 and T14), and the tools `search_apartments`, `rank_apartments`, `update_shortlist`, `send_invites` (paused for approval with `interruptOn`) and `process_feedback`. `parse_preferences` is not a separate tool: the model fills the arguments of `search_apartments` directly. Saved explanations are built in code from `lib/match` criteria, so the model supplies ids only. The API is `POST /api/agent` and `POST /api/agent/resume` (NDJSON). Migration `0012_agent.sql` adds `shortlist`, a per-person daily call budget (`take_agent_call`) and `invite_to_flock`. `next.config.ts` lists the agent packages in `serverExternalPackages` because langsmith has an optional `ws` import the bundler cannot resolve. Real Deep Agents API names matched this section. Verified against a real model: `openai:gpt-5-mini` passes `scripts/smoke-agent.ts` and `scripts/demo-agent.mjs` (the demo wish saved 5 passing picks; an invite paused, rejecting sent nothing, approving invited; no number in the answer was missing from the tool results). Not verified: other models, and answer quality beyond these checks. The first run saved nothing because the model asked permission instead of acting, so the prompt now says to save without asking.
+
+**Status (T13, built; local database only):** `lib/agent/subagents.ts` defines the specialists. `apartment-searcher` can search and rank but not write. `roommate-matcher` has the read-only `find_open_flocks` tool and is registered only when the server supplies a finder. `aerial-evidence` is T14/T15. Fixture tests in `lib/agent/subagents.test.ts`: three profiles and ten floor plans with a known top pick and known exclusions, and `update_shortlist` is asserted to be called.
+
+### 8.3a Thumbs-down reasons and the shortlist refresh (T13)
+
+After a thumbs-down on the reels (`ListingReel`), a "Why the nope?" sheet (Figma 02e, 02f) offers reason chips: too far, too expensive, no pets, too small, bad photos, not my area, other. Picking some and tapping **Update my picks** calls `POST /api/agent/feedback`. Skip closes the sheet and the vote stands.
+
+**It is plain code, not a model call.** `rerunShortlist` in `lib/agent/feedback.ts` records the reasons in `flock_feedback`, searches again for the flock as it is now (members, combined budget, bedrooms) minus what the reasons rule out, saves the top 5 (explanations built from the checks) and marks the agent's earlier picks that no longer qualify `removed`. The same function runs when someone joins the flock (leaving does not trigger it yet: that is a direct database call, not an API route) and from the `process_feedback` tool, so the result is the same whoever triggers it and a test can pin it. The model only words the answer.
+
+| Reason | Rules out |
+|---|---|
+| too expensive | that place and every plan at or above its rent (expires when a newer member joins, because the budget changed) |
+| too small | that place and plans no bigger than it |
+| no pets | that place and plans known to ban pets; plans known to allow pets go first |
+| too far | that place and plans as far or farther from the flock's commute pins (§7.4); with no pins, the same community |
+| not my area | that place and the same community (the kit has no neighborhoods yet) |
+| bad photos, other | that place only |
+
+Feedback from people who have left the flock is ignored. One person's reason applies to the whole flock. Candidates are ordered by price then id, so the same flock always gets the same ones.
+
+**The person is told what happened** (`outcome` in the response, worded by `feedbackMessage` in `lib/format.ts`): `updated` ("Picks updated · 2 new, 1 dropped"), `unchanged` ("Your picks already fit · nothing changed"), `nothing-fits` ("Nothing else fits · kept your picks": nothing passes, so the old shortlist is left alone) and `no-budget` ("Add a budget in Flock preferences to refresh your picks": nobody has set one, and a missing cap counts as 0).
+
+**Commute pins** (§7.4, `member_pins`). `flock_pin_distances(flock, listings)` gives the farthest and average straight-line miles from each listing to the pins of the flock's members. If it is missing (a database without migration 0018), the lookup fails quietly and "too far" falls back to the community rule. shortcut: straight-line, not a route; real commute time would be a later, shortlist-only addition.
+
+**Pass and Like.** The reels' Stash action became **Pass**: skip with no vote, nothing saved or shared, the place can return next visit, and Back has nothing to undo on the server. On Flock picks and the listing detail, the bookmark and "Stash" became **Like**, your thumbs-up vote (tap again to take it back).
 
 ### 8.1 How we use each Deep Agents capability
 
@@ -577,7 +609,8 @@ Subagents are plain objects: `{ name, description, systemPrompt, tools, model? }
 | `aerial_search`, `property_attributes` | aerial-evidence | Vexcel semantic search / attributes with cache and budget | `lib/enrich/vexcel.ts`, `aerial_queries` |
 | `update_shortlist` | orchestrator | **Write** picks + explanations to `shortlist` | Supabase |
 | `send_invites` | orchestrator | **Write**; interrupts for approval | Supabase |
-| `process_feedback` | orchestrator | Record a rejection or changed preference, re-search, update the shortlist | `flock_feedback` + the above |
+| `process_feedback` | orchestrator | Record a rejection and its reason, then run the same plain-code refresh as the thumbs-down chip (§8.3a): search again without what the reason rules out, update the shortlist, answer with the outcome | `flock_feedback`, `lib/agent/feedback.ts` |
+| `find_open_flocks` | roommate-matcher | Open flocks this person could join, best match first, with coarse reasons. Read-only: it suggests, it never saves or invites | `lib/server/discover.ts` (supplied by the server, so the agent holds no service key) |
 
 ### 8.4 Safety rules
 
@@ -671,7 +704,7 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 ### 8.8 Agent UI
 
 - An interrupt renders an approval card ("Invite Maya and Sam to The Nest?"); approve or reject resumes the thread.
-- A thumbs-down is written to `swipes` directly (with an optional reason chip); the client then calls `POST /api/agent/feedback`, which runs a short, rate-limited `process_feedback` task: record the reason in `flock_feedback`, apply the removal rule (§7.3), re-search if needed, and update the shortlist. Everyone sees the change through realtime (§11).
+- A thumbs-down is written to `swipes` directly (with an optional reason chip); the client then calls `POST /api/agent/feedback`, which records the reasons in `flock_feedback` and runs `rerunShortlist` (§8.3a, plain code, no model call): re-search without what the reasons rule out and update the shortlist. The removal rule (§7.3) is separate. Everyone sees the change through realtime (§11).
 - A change in membership triggers the same task once to review the shortlist against the new combined budget.
 
 ### 8.9 Ducktect best option (search bar)
@@ -756,7 +789,7 @@ export const DucktectResult = z.object({
 |---|---|
 | `POST /api/agent` | Deep Agent chat; streams plan, subagent steps, tokens, interrupts |
 | `POST /api/agent/resume` | Approve or reject a paused action (e.g. invites) |
-| `POST /api/agent/feedback` | After a thumbs-down: reason chip → short `process_feedback` task; also run on membership changes |
+| `POST /api/agent/feedback` | `{ flockId, listingId, reasons }` after a thumbs-down, or `{ flockId }` alone for a membership change. Runs `rerunShortlist` (no model call, no key needed, outside the agent's daily budget) and answers `{ savedIds, ruledOutBy, outcome, added, removed }`. Joining a flock triggers the same refresh |
 | `POST /api/proposals/[id]/respond` | Accept or decline an agent-proposed group; creates the flock when all accept |
 | `POST /api/ducktect` | Read-only agent for the search bar's "Ducktect best option"; streams steps, returns ranked picks |
 | `POST /api/flocks` | Create flock (friends/open) with validation. The creator is an active admin in the same transaction, whether or not anyone else has accepted yet |
@@ -811,7 +844,7 @@ Order is by what the demo needs; the demo path is bold.
 | **1 Real listings** | **Read the kit docs; `ingest-costar.ts`; `listings` view; switch the map center and seed group to LA** | Map and swipe deck show real LA floor plans |
 | 2 Image enrichment | Permission note; `enrich-apartments-com.ts` for the demo properties first; gallery in `ListingReel`; photo credit | Demo listings have several photos, and the app looks fine without them |
 | **3 Flocks and matching** | `flocks`/`flock_members` migration; `swipes.flock_id` and thumbs votes; `proposals`; `join_flock`; Friends/Open creation; `compat`, `listing-fit`; seeded fictional profiles for the demo | Create a flock, join an open one by rules, see why a place fits |
-| **4 Deep Agent** | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs` | "We need 3 bedrooms under $4,700" yields a roommate proposal and a saved, explained shortlist |
+| **4 Deep Agent** (T12, T13 built) | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs` | "We need 3 bedrooms under $4,700" yields a roommate proposal and a saved, explained shortlist |
 | **5 Vexcel + Ducktect** | `lib/enrich/vexcel.ts`, `aerial_queries`, `aerial-evidence` subagent, pre-warm script; "Ducktect best option" in `MapSearch`; `/api/ducktect`; result sheet and map restyle | Typing a prose wish and picking Ducktect returns ranked picks with aerial evidence |
 | 6 Auth | Supabase Auth screens, `proxy.ts`, remove hard-coded ids, demo switcher behind a flag | Real sign-in works; two phones still demo |
 | 7 Optional | Rent split by room; tour slots; comparison polish; LangSmith traces; Deep Agents memory | Only if time remains |
