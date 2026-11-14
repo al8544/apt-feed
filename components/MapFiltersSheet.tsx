@@ -16,7 +16,12 @@ export type Filters = {
   hideNoped: boolean;
   showStashed: boolean;
   pets: boolean;
+  query: string; // from the map search bar: address or neighborhood contains this
 };
+
+// Search-bar text match on address or neighborhood (case-insensitive).
+export const matchesQuery = (l: Pick<GroupListing, 'address' | 'neighborhood'>, q: string) =>
+  `${l.address} ${l.neighborhood}`.toLowerCase().includes(q.trim().toLowerCase());
 
 export const NO_FILTERS: Filters = {
   minPrice: null,
@@ -27,6 +32,7 @@ export const NO_FILTERS: Filters = {
   hideNoped: false,
   showStashed: true,
   pets: false,
+  query: '',
 };
 
 export function applyFilters(
@@ -43,7 +49,8 @@ export function applyFilters(
       (!f.likedByFlock || l.likes > 0) &&
       (!f.hideNoped || mine.swipes.get(l.id) !== 'left') &&
       (f.showStashed || !mine.stashed.has(l.id)) &&
-      (!f.pets || l.pets),
+      (!f.pets || l.pets) &&
+      (!f.query.trim() || matchesQuery(l, f.query)),
   );
 }
 
@@ -120,7 +127,7 @@ function FiltersBody({
         <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2.5 pb-1.5">
           <div className="h-[5px] w-10 rounded-[3px] bg-line" />
           <div className="flex w-full items-center justify-between px-5">
-            <button onClick={() => setDraft(NO_FILTERS)} className="w-[60px] text-left text-lg text-muted underline">
+            <button onClick={() => setDraft({ ...NO_FILTERS, query: draft.query })} className="w-[60px] text-left text-lg text-muted underline">
               Reset
             </button>
             <h2 className="text-2xl font-bold text-ink">Filters</h2>

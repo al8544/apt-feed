@@ -6,6 +6,7 @@ import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
 import Icon from '@/components/Icon';
 import MapFiltersSheet, { NO_FILTERS, applyFilters, type Filters } from '@/components/MapFiltersSheet';
+import MapSearch from '@/components/MapSearch';
 
 const CENTER = { lat: 40.712, lng: -73.955 };
 type LatLng = { lat: number; lng: number };
@@ -72,11 +73,12 @@ export default function MapPage() {
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-2.5 pt-[max(12px,env(safe-area-inset-top))]">
           <div className="pointer-events-auto flex gap-2.5 px-4">
-            <div className="rough flex flex-1 items-center gap-2.5 rounded-[14px] px-3.5 py-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/search.svg" alt="" width={20} height={20} />
-              <span className="text-[19px] text-ink">Brooklyn, NY</span>
-            </div>
+            <MapSearch
+              listings={all ?? []}
+              activeQuery={filters.query}
+              onPickListing={(l) => setSelectedId(l.id)}
+              onShowMatches={(query) => setFilters((f) => ({ ...f, query }))}
+            />
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="Filters"
@@ -105,7 +107,9 @@ export default function MapPage() {
             </div>
           )}
           {all && !error && listings.length === 0 && (
-            <div className="rough self-center rounded-full px-3 py-1.5 text-[15px] text-muted">No homes match these filters</div>
+            <div className="rough self-center rounded-full px-3 py-1.5 text-[15px] text-muted">
+              {filters.query ? `No homes match “${filters.query}”` : 'No homes match these filters'}
+            </div>
           )}
         </div>
 
