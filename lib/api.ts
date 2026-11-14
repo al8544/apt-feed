@@ -129,8 +129,9 @@ export async function clearMyPin(): Promise<void> {
 }
 
 // 02e: after a thumbs-down, tell the agent why. It searches again without what the reasons rule out and updates the flock's shortlist.
-export async function sendFeedback(listingId: string, reasons: string[]): Promise<void> {
-  await json(await authFetch('/api/agent/feedback', { method: 'POST', body: JSON.stringify({ flockId: GROUP_ID, listingId, reasons }) }));
+export type FeedbackResult = { outcome: 'updated' | 'unchanged' | 'nothing-fits' | 'no-budget'; added: number; removed: number };
+export async function sendFeedback(listingId: string, reasons: string[]): Promise<FeedbackResult> {
+  return json<FeedbackResult>(await authFetch('/api/agent/feedback', { method: 'POST', body: JSON.stringify({ flockId: GROUP_ID, listingId, reasons }) }));
 }
 
 // 00f / 00h: create a flock; the caller becomes its admin. Body is validated by lib/flocks.ts on the server.

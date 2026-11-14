@@ -20,7 +20,7 @@ export type UserContext = {
 };
 // What Ducktect asks of the data (docs/DESIGN.md §8.9): hard filters, an optional area, and a cap on the rows pulled.
 export type CandidateQuery = { maxRent?: number; beds?: number; pets?: boolean; viewport?: Viewport; limit: number };
-export type Needs = FlockNeeds & { size: number };
+export type Needs = FlockNeeds & { size: number; membersChangedAt?: string | null }; // ISO time the newest active member joined; a budget-based reason older than this is stale
 export type SavedPick = { listingId: string; explanation: string; criteria: Criterion[] };
 export type ShortlistRow = { listingId: string; explanation: string | null; criteria: Criterion[] | null; status: string };
 
@@ -36,7 +36,7 @@ export interface AgentStore {
   invite(flockId: string, username: string): Promise<string>;
   recordFeedback(flockId: string, userId: string, listingId: string, reason: string): Promise<void>;
   distances(flockId: string, ids: string[]): Promise<Map<string, number>>; // farthest straight-line miles to any member's pin; empty when nobody has set one
-  feedbackFor(flockId: string): Promise<{ listingId: string; reason: string }[]>;
+  feedbackFor(flockId: string): Promise<{ listingId: string; reason: string; userId: string; createdAt: string }[]>;
   retireShortlist(flockId: string, keepIds: string[]): Promise<void>; // the agent's earlier picks that are not in keepIds are marked removed
 }
 
@@ -57,11 +57,13 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
     async flockNeeds(flockId) {
       const f = ok(await db.from('flocks').select('bedrooms_needed').eq('id', flockId).single(), 'flock') as { bedrooms_needed: number | null } | null;
       const rows = ok(
-        await db.from('flock_members').select('user_id, status, user:profiles(budget_max, pets)').eq('flock_id', flockId).eq('status', 'active'),
+        await db.from('flock_members').select('user_id, status, created_at, user:profiles(budget_max, pets)').eq('flock_id', flockId).eq('status', 'active'),
         'members',
-      ) as unknown as { user_id: string; status: 'active'; user: { budget_max: number | null; pets: boolean | null } | null }[];
+      ) as unknown as { user_id: string; status: 'active'; created_at: string; user: { budget_max: number | null; pets: boolean | null } | null }[];
       return {
         size: rows.length,
+        // shortcut: the member row's creation time stands in for "joined" (an invite that was accepted later counts from the invite).
+        membersChangedAt: rows.map((r) => r.created_at).reduce<string | null>((latest, t) => (!latest || Date.parse(t) > Date.parse(latest) ? t : latest), null),
         members: rows.map((r) => ({ userId: r.user_id, status: r.status, budgetMax: r.user?.budget_max ?? null })),
         bedroomsNeeded: f?.bedrooms_needed ?? null,
         areas: [], // neighborhoods are unknown in the data for now
@@ -71,7 +73,7 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
     },
     async searchPlans({ maxRent, beds, limit }) {
       const rows = ok(
-        await db.from('listings').select(COLS).eq('source', 'costar').eq('active', true).gte('beds', beds).lte('price', maxRent).gt('price', 500).order('price', { ascending: false }).limit(limit),
+        await db.from('listings').select(COLS).eq('source', 'costar').eq('active', true).gte('beds', beds).lte('price', maxRent).gt('price', 500).order('price', { ascending: false }).order('id').limit(limit), // id breaks ties, so the same flock always gets the same candidates
         'search',
       ) as unknown as Row[];
       return rows.map(toPlan);
@@ -136,8 +138,8 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
       return new Map((r.data as { listing_id: string; max_mi: number }[]).map((x) => [x.listing_id, x.max_mi]));
     },
     async feedbackFor(flockId) {
-      const rows = ok(await db.from('flock_feedback').select('listing_id, reason').eq('flock_id', flockId).not('listing_id', 'is', null).not('reason', 'is', null), 'feedback') as { listing_id: string; reason: string }[];
-      return rows.map((r) => ({ listingId: r.listing_id, reason: r.reason }));
+      const rows = ok(await db.from('flock_feedback').select('listing_id, reason, user_id, created_at').eq('flock_id', flockId).not('listing_id', 'is', null).not('reason', 'is', null), 'feedback') as { listing_id: string; reason: string; user_id: string; created_at: string }[];
+      return rows.map((r) => ({ listingId: r.listing_id, reason: r.reason, userId: r.user_id, createdAt: r.created_at }));
     },
     async retireShortlist(flockId, keepIds) {
       ok(await db.from('shortlist').update({ status: 'removed' }).eq('flock_id', flockId).eq('added_by', 'agent').not('listing_id', 'in', `(${keepIds.join(',')})`), 'shortlist');
@@ -146,10 +148,11 @@ export function supabaseStore(db: SupabaseClient): AgentStore {
 }
 
 // In memory, for tests and the offline smoke run.
-export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Partial<UserContext>; miles?: Record<string, number> }): AgentStore & { saved: Map<string, SavedPick>; invited: string[]; feedback: string[]; flocksSeen: string[] } {
+export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Partial<UserContext>; miles?: Record<string, number> }): AgentStore & { saved: Map<string, SavedPick>; invited: string[]; feedback: string[]; feedbackLog: { listingId: string; reason: string; userId: string; createdAt: string }[]; flocksSeen: string[] } {
   const saved = new Map<string, SavedPick>(), invited: string[] = [], feedback: string[] = [], flocksSeen: string[] = [];
+  const feedbackLog: { listingId: string; reason: string; userId: string; createdAt: string }[] = [];
   return {
-    saved, invited, feedback, flocksSeen,
+    saved, invited, feedback, feedbackLog, flocksSeen,
     async flockNeeds(flockId) { flocksSeen.push(flockId); return seed.needs; },
     async searchPlans({ maxRent, beds, limit }) { return seed.plans.filter((p) => p.rentMin <= maxRent && p.beds >= beds).slice(0, limit); },
     async findCandidates({ maxRent, beds, pets, viewport, limit }) {
@@ -167,9 +170,9 @@ export function memoryStore(seed: { plans: Plan[]; needs: Needs; context?: Parti
     async saveShortlist(_f, picks) { picks.forEach((p) => saved.set(p.listingId, p)); return picks.length; },
     async shortlist() { return [...saved.values()].map((p) => ({ listingId: p.listingId, explanation: p.explanation, criteria: p.criteria, status: 'active' })); },
     async invite(_f, username) { invited.push(username); return 'invited'; },
-    async recordFeedback(_f, _u, listingId, reason) { feedback.push(`${listingId}:${reason}`); },
+    async recordFeedback(_f, userId, listingId, reason) { feedback.push(`${listingId}:${reason}`); feedbackLog.push({ listingId, reason, userId, createdAt: new Date().toISOString() }); },
     async distances(_f, ids) { return new Map(ids.filter((id) => seed.miles?.[id] != null).map((id) => [id, seed.miles![id]!])); },
-    async feedbackFor() { return feedback.map((f) => ({ listingId: f.slice(0, f.indexOf(':')), reason: f.slice(f.indexOf(':') + 1) })); },
+    async feedbackFor() { return feedbackLog; },
     async retireShortlist(_f, keepIds) { for (const id of [...saved.keys()]) if (!keepIds.includes(id)) saved.delete(id); },
   };
 }

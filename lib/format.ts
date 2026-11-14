@@ -72,3 +72,12 @@ export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; 
   return 3958.8 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
 }
 export const miles = (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} mi`;
+
+// What the thumbs-down toast says once the flock agent has re-checked the shortlist.
+export function feedbackMessage(r: { outcome: string; added: number; removed: number }) {
+  if (r.outcome === 'no-budget') return 'Add a budget in Flock preferences to refresh your picks';
+  if (r.outcome === 'nothing-fits') return 'Nothing else fits · kept your picks';
+  if (r.outcome === 'unchanged') return 'Your picks already fit · nothing changed';
+  const parts = [r.added && `${r.added} new`, r.removed && `${r.removed} dropped`].filter(Boolean);
+  return `Picks updated${parts.length ? ` · ${parts.join(', ')}` : ''}`;
+}

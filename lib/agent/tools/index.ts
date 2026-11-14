@@ -76,8 +76,8 @@ export function makeTools(store: AgentStore, findFlocks?: FlockFinder) {
     async (input, runtime) => {
       const { flockId, userId } = ctxOf(runtime);
       await store.recordFeedback(flockId, userId, input.listingId, input.reason);
-      const { savedIds, ruledOutBy } = await rerunShortlist(store, flockId); // the reasons tighten the search in code, not in the model
-      return json({ recorded: true, ruledOutBy, shortlistNow: savedIds, note: savedIds.length ? undefined : 'nothing passes after the feedback, so the shortlist was left as it was' });
+      const { savedIds, ruledOutBy, outcome, added, removed } = await rerunShortlist(store, flockId); // the reasons tighten the search in code, not in the model
+      return json({ recorded: true, outcome, added, removed, ruledOutBy, shortlistNow: savedIds, note: outcome === 'nothing-fits' ? 'nothing passes after the feedback, so the shortlist was left as it was' : outcome === 'no-budget' ? 'nobody in the flock has set a budget, so nothing was searched' : undefined });
     },
     { name: 'process_feedback', description: 'Record why someone rejected a place, then search again without what that rules out and update the shortlist.', schema: processFeedbackInput },
   );

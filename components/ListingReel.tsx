@@ -3,7 +3,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import Link from 'next/link';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { sendFeedback, swipe, undoSwipe, type GroupListing } from '@/lib/api';
-import { money, specs, area } from '@/lib/format';
+import { area, feedbackMessage, money, specs } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 import Icon, { type IconName } from './Icon';
 import ReasonSheet from './ReasonSheet';
@@ -38,6 +38,7 @@ export default function ListingReel({
   const [history, setHistory] = useState<{ listing: GroupListing; voted: boolean }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<Direction | 'updated' | null>(null);
+  const [note, setNote] = useState(''); // the agent's answer to a thumbs-down, shown in the 'updated' toast
   const [asking, setAsking] = useState<GroupListing | null>(null); // the place just thumbed down, while the reason sheet is open
   const card = useRef<CardHandle>(null);
 
@@ -65,7 +66,7 @@ export default function ListingReel({
   function sendReasons(reasons: string[]) {
     if (!asking) return;
     setAsking(null);
-    sendFeedback(asking.id, reasons).then(() => setToast('updated')).catch((e) => setError(e.message));
+    sendFeedback(asking.id, reasons).then((r) => { setNote(feedbackMessage(r)); setToast('updated'); }).catch((e) => setError(e.message));
   }
 
   // Skip without voting: nothing is saved or shared, the place just leaves this deck (it can show again next visit).
@@ -129,7 +130,7 @@ export default function ListingReel({
             className="absolute inset-x-0 top-[calc(max(10px,env(safe-area-inset-top))+64px)] flex justify-center"
           >
             <div className="rough flex items-center gap-4 rounded-lg px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
-              {toast === 'right' ? 'Added to Flock picks' : toast === 'updated' ? 'Got it · re-checking your picks' : 'Skipped · won’t show again'}
+              {toast === 'right' ? 'Added to Flock picks' : toast === 'updated' ? note : 'Skipped · won’t show again'}
               {toast !== 'updated' && (
                 <button onClick={undo} className="text-accent-soft underline">
                   Undo
