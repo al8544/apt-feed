@@ -52,6 +52,13 @@ Tags used below: **[built]** exists in code today · **[figma]** designed, not i
 
 A third origin is **agent-proposed**: the agent suggests a group of compatible people; everyone must accept before the flock exists.
 
+**Flocks are any size from 2 up.** Three is fine; nothing in the product or the math assumes four.
+
+### 2.3 Voting and cards
+
+- **Voting is thumbs up / thumbs down**, the same two icons as the For You deck ("Yes" / "Nope"). Each vote belongs to one person in one flock; changing it updates the row. A thumbs-down can carry an optional reason chip ("too far", "too expensive", "no pets") that feeds the agent. Comments are separate (`listing_comments`).
+- **The deck and the map show one card or pin per community**, using the floor plan that best fits the flock (the cheapest one that meets the bedroom need), with a floor-plan picker on the detail view. Votes and shortlist items attach to a specific **floor plan**, because that is what the flock would rent.
+
 ---
 
 ## 3. Current state (read from the code)
@@ -87,6 +94,8 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 | `getSwipeDeck` builds a long `not.in (...)` URL | `lib/api.ts` | Breaks past a few hundred swipes; move to a SQL view/RPC |
 | Metadata still says "aptHunt" | `app/layout.tsx` | Rename to Flock |
 | No server code | no `app/api/**`, no `proxy.ts` | Agent and ingestion need a server |
+| Swipes are personal, not per flock | `swipes` has no `flock_id` | Thumbs votes need a flock context (§5.3) |
+| Browser-only Supabase session | `lib/supabase.ts` client in the browser | Route Handlers can't see who is calling; see §10 |
 
 ---
 
@@ -107,7 +116,7 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
               │             (pure scoring)  (Deep Agent)   (images, aerial)  (kit readers)
               │
    offline scripts (run by a teammate, write to Supabase with the service key)
-      scripts/ingest-costar.ts → communities, floor_plans
+      scripts/ingest-costar.ts → communities, listings
       scripts/enrich-apartments-com.ts → listing_media
       scripts/enrich-vexcel.ts (pre-warm common phrases) → aerial_queries, listing_enrichment
 ```
@@ -118,6 +127,7 @@ A third origin is **agent-proposed**: the agent suggests a group of compatible p
 - Heavy or rate-limited work (kit ingestion, image enrichment) is an **offline script**, not a request-time call. The app only reads the results from Supabase.
 - Pure logic (`lib/match`, `lib/compare.ts`) has no I/O and is unit-tested.
 - The Deep Agent runs in a **Node** Route Handler on a long-lived server (`next start` or a container) rather than a short-lived serverless function; see §8.6.
+- Route Handlers authenticate with the caller's Supabase access token and query with a user-scoped client so RLS applies (§10).
 - Next.js 16 notes (from the bundled docs in `node_modules/next/dist/docs`): Middleware is now **`proxy.ts`** (project root, exports `proxy`); it is for optimistic redirects only, not real authorization, so RLS and server checks remain the security boundary. Route Handlers live in `route.ts` under `app/`; with `cacheComponents` on, `POST` handlers are never cached and `GET` handlers run at request time unless they use `use cache`. Read `01-app/03-api-reference/03-file-conventions/route.md` and `…/02-route-segment-config` before adding segment config; options may be restricted with Cache Components.
 
 ### 4.1 Target folder layout
@@ -152,6 +162,8 @@ Evolve the existing tables rather than rewrite. Keep `listings` as the name the 
 
 ### 5.1 Property data (from the CoStar kit)
 
+Evolve the existing tables rather than rewrite. The app keeps reading a table called `listings`, but it now holds **one row per CoStar floor plan** (what a flock actually rents), with a normalized `communities` parent.
+
 ```sql
 -- One row per apartment community (CoStar property).
 create table communities (
@@ -159,7 +171,7 @@ create table communities (
   costar_property_id text unique not null,   -- [verify] exact id field in the kit
   name text, address text, city text, postal_code text,
   lat double precision, lng double precision,
-  neighborhood text,                         -- derived (see §6.1)
+  neighborhood text,                         -- derived from a canonical LA list (see §6.1)
   management_company text,
   primary_photo_url text,
   source_type int,                           -- Residential Listings enum, see §6.1
@@ -167,32 +179,30 @@ create table communities (
   ingested_at timestamptz default now()
 );
 
--- One row per floor plan at a community. This is what a roommate group actually rents.
-create table floor_plans (
+-- One row per floor plan. This REPLACES the seeded Brooklyn listings table, so swipes, stash, tours
+-- and messages keep pointing at "listings" and the embeds in lib/api.ts keep working.
+create table listings (
   id uuid primary key default gen_random_uuid(),
-  community_id uuid references communities on delete cascade,
+  community_id uuid references communities,
   costar_floorplan_id text,                  -- [verify]
+  -- denormalized from the community so lib/api.ts (LISTING_COLS) works unchanged:
+  address text, neighborhood text, lat double precision, lng double precision,
   beds int not null, baths numeric not null, sqft int,
   rent_min int, rent_max int,                -- floor-plan rent range from the kit
+  price int,                                 -- = rent_min ("from" price); see §7.1 for the range rule
+  pets boolean,                              -- null = unknown
+  photos text[] default '{}',                -- kept in sync from listing_media (apartments.com first, kit photo as fallback)
+  active boolean default true,               -- ingest sets false for rows missing from the kit; rows are never deleted
   raw jsonb,
   unique (community_id, costar_floorplan_id)
 );
-
--- The UI keeps reading "listings". Same columns as today, now backed by real data.
-create view listings as
-select fp.id, c.address, c.neighborhood,
-       coalesce(fp.rent_min, fp.rent_max) as price,   -- asking rent; show range where min ≠ max
-       fp.beds, fp.baths, fp.sqft,
-       null::boolean as pets,                          -- [verify] pet policy field; else null = unknown
-       c.lat, c.lng,
-       coalesce(m.photos, array[c.primary_photo_url]) as photos
-from floor_plans fp
-join communities c on c.id = fp.community_id
-left join (select community_id, array_agg(url order by position) photos
-           from listing_media group by community_id) m on m.community_id = c.id;
 ```
 
-`pets` becoming nullable means `groupMatch` must treat "unknown" as unknown, not as "no" (today it is typed `boolean`).
+- The ingest and enrichment scripts keep the denormalized columns and `photos` in sync; the app never writes them.
+- Rows are **never deleted** (swipes, shortlists and tours point at them); `active = false` hides them.
+- A `community_cards(flock_id)` SQL function returns the best-fitting listing per community for a flock, which the deck and map use so one building is one card (§2.3).
+- **Cutover:** listing ids change, so the Brooklyn seed rows in `swipes`, `stash`, `tours`, `tour_attendees` and `messages` are deleted when the LA listings are ingested.
+- `pets` is nullable, so `groupMatch` must treat "unknown" as unknown, not "no" (today it is typed `boolean`).
 
 ### 5.2 Media and enrichment
 
@@ -230,9 +240,12 @@ create table aerial_queries (           -- cache of Vexcel semantic searches, on
 ```sql
 alter table profiles
   add column if not exists budget_max int,            -- max monthly rent SHARE this person accepts
-  add column if not exists about text,                -- "About you" (open flocks)
-  add column if not exists habits jsonb default '{}', -- sleep schedule, cleanliness, guests, smoking, noise
-  add column if not exists dealbreakers text[] default '{}';
+  add column if not exists about text,                -- "About you" (open flocks): free text, for humans
+  add column if not exists habits jsonb default '{}', -- structured: sleep, cleanliness 1-5, guests, smoking, noise
+  add column if not exists dealbreakers_text text,    -- free text the user wrote
+  add column if not exists dealbreaker_tags text[] default '{}',  -- structured tags code compares (see §7.4)
+  add column if not exists discoverable boolean default false,    -- may appear in matching / Find a Flock
+  add column if not exists is_demo boolean default false;         -- seeded fictional profile (no auth user)
 
 create table flocks (                                  -- today's single "group", generalized
   id uuid primary key default gen_random_uuid(),
@@ -242,7 +255,8 @@ create table flocks (                                  -- today's single "group"
   about text, looking_for text,                        -- open-flock prose
   open_to_join boolean default false,
   join_rules jsonb default '{}',                       -- {budget:true, beds_movein:true, areas:true}
-  spots_total int, bedrooms_needed int,
+  max_size int,                                        -- null = no cap; flocks may be any size from 2 up
+  bedrooms_needed int,                                 -- null = one bedroom per active member
   filters jsonb default '{}',                          -- budget range, beds, areas, move_in
   created_by uuid references profiles, created_at timestamptz default now()
 );
@@ -256,22 +270,51 @@ create table flock_members (
   primary key (flock_id, user_id)
 );
 
--- Replaces direct use of swipes for group decisions; swipes stay for the For You deck.
+-- The agent's (and members') picks for a flock. No stored score: it is computed on read (§7.3).
 create table shortlist (
   flock_id uuid references flocks on delete cascade,
-  floor_plan_id uuid references floor_plans,
-  score int not null,                      -- computed by lib/match, never by the model
-  explanation text, criteria jsonb,        -- per-criterion result the explanation is built from
+  listing_id uuid references listings,
+  explanation text, criteria jsonb,        -- per-criterion results (from lib/match) the explanation is built from
+  status text check (status in ('active','contested','removed')) default 'active',
   added_by text check (added_by in ('agent','member')) default 'agent',
   agent_run_id uuid, created_at timestamptz default now(),
-  primary key (flock_id, floor_plan_id)
+  primary key (flock_id, listing_id)
 );
 
-create table listing_comments (flock_id uuid, user_id uuid, floor_plan_id uuid, body text, created_at timestamptz default now());
+-- Votes are thumbs up / thumbs down, recorded in `swipes` (direction 'right' = thumbs up, 'left' = thumbs down),
+-- now scoped to a flock. The For You deck and shortlist items both write here.
+alter table swipes add column flock_id uuid references flocks on delete cascade;
+-- primary key becomes (user_id, listing_id, flock_id); the deck's "seen" state is per flock.
+alter table swipes add column reason text;   -- optional chip on a thumbs-down: 'too far' | 'too expensive' | 'no pets' | ...
+
+create view flock_votes as                 -- replaces group_likes
+select s.flock_id, s.listing_id,
+       count(*) filter (where s.direction = 'right') as up,
+       count(*) filter (where s.direction = 'left')  as down
+from swipes s join flock_members m on m.flock_id = s.flock_id and m.user_id = s.user_id and m.status = 'active'
+group by s.flock_id, s.listing_id;
+
+-- Agent-proposed groups (and any "start a flock with these people" proposal).
+create table proposals (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid references profiles, suggested_name text,
+  status text check (status in ('pending','accepted','declined','expired')) default 'pending',
+  expires_at timestamptz default now() + interval '48 hours',
+  flock_id uuid references flocks                          -- set when it becomes a flock
+);
+create table proposal_members (
+  proposal_id uuid references proposals on delete cascade, user_id uuid references profiles,
+  response text check (response in ('pending','accepted','declined')) default 'pending',
+  primary key (proposal_id, user_id)
+);
+-- A proposal becomes a flock when every invitee has accepted. If someone declines, the people who
+-- accepted are asked "continue as a smaller flock?" (minimum 2).
+
+create table listing_comments (flock_id uuid, user_id uuid, listing_id uuid, body text, created_at timestamptz default now());
 
 create table flock_feedback (            -- rejections and reasons the agent learns from (§8.7)
   flock_id uuid references flocks on delete cascade, user_id uuid references profiles,
-  floor_plan_id uuid references floor_plans, reason text, created_at timestamptz default now()
+  listing_id uuid references listings, reason text, created_at timestamptz default now()
 );
 
 create table agent_runs (                  -- audit trail: what the agent did and why
@@ -281,7 +324,7 @@ create table agent_runs (                  -- audit trail: what the agent did an
 );
 ```
 
-Existing mapping: `group_members` → `flock_members`; the hard-coded `GROUP_ID` → a `flockId` from the route or session; `group_likes` becomes a view over `swipes` joined to active `flock_members`; `swipes`, `stash`, `tours`, `tour_attendees`, `messages` keep their shape but gain `flock_id` where they are group-scoped.
+Existing mapping: `group_members` → `flock_members`; the hard-coded `GROUP_ID` → a `flockId` from the route or session; `group_likes` → the `flock_votes` view above; `swipes` gains `flock_id` (and the deck's seen-state becomes per flock: a listing you thumbed in one flock shows again in another); `stash` stays personal; `tours` and `tour_attendees` are already group-scoped.
 
 ### 5.4 Row-level security (sketch)
 
@@ -291,9 +334,12 @@ Every table is RLS-on. Core pattern: a user can see a flock's rows only if they 
 create policy "members read their flocks" on flocks for select
   using (exists (select 1 from flock_members m
                  where m.flock_id = flocks.id and m.user_id = auth.uid() and m.status = 'active'));
--- Open flocks expose a public profile through a view (name, about, looking_for, rules, spots),
+-- Open flocks expose a public profile through a view (name, about, looking_for, rules, open spots),
 -- never the member list or private profile fields.
 ```
+
+- **Profiles:** other people's `budget_max`, habits and dealbreakers are never selectable. A `public_profiles` view exposes name, avatar and (for open flocks) `about`, and only for `discoverable` users.
+- **Service role:** the service-role key bypasses RLS. It is used only by ingestion scripts and a few security-definer functions (`join_flock`, proposal responses). Agent tools use a user-scoped client (§10).
 
 ---
 
@@ -319,9 +365,9 @@ create policy "members read their flocks" on flocks for select
 | `communities.lat / lng` | [verify] | Needed for the map and for Vexcel; count how many rows lack it |
 | `communities.primary_photo_url` | [verify] | May be hotlink-restricted; test from the browser |
 | `communities.management_company` | [verify] | |
-| `communities.neighborhood` | derived | Kit may not have it. Derive from ZIP or a point-in-polygon on LA neighborhood boundaries; Google reverse geocoding is a fallback (we already have a Maps key) |
-| `floor_plans.beds / baths / sqft` | [verify] | |
-| `floor_plans.rent_min / rent_max` | [verify] | Floor-plan rents; never present a range as one fixed price |
+| `communities.neighborhood` | derived | Kit may not have it. Derive from ZIP or a point-in-polygon on LA neighborhood boundaries; Google reverse geocoding is a fallback (we already have a Maps key). Use one **canonical LA neighborhood list** for this and for the profile/flock area pickers, because matching is by exact name |
+| `listings.beds / baths / sqft` | [verify] | |
+| `listings.rent_min / rent_max` | [verify] | Floor-plan rents; never present a range as one fixed price |
 | pet policy, amenities | [verify] | If absent, leave null and say "unknown" in the UI |
 
 **Ingest script (`scripts/ingest-costar.ts`)**
@@ -329,10 +375,10 @@ create policy "members read their flocks" on flocks for select
 1. Read `COSTAR_KIT_ZIP` (local path) or download `COSTAR_KIT_URL`; unzip with `COSTAR_ZIP_PASSWORD` into `data/` (not committed).
 2. Stream `apartment-listing.jsonl` line by line. Validate each record against `schemas/apartment-listing.schema.json` (Ajv); count and log rejects instead of failing.
 3. Filter: Los Angeles (by city/bbox) and `sourceType == Multifamily`. Print counts at each filter so we can see what we kept.
-4. Group by community; upsert `communities`, then `floor_plans` (idempotent on the CoStar ids).
+4. Group by community; upsert `communities`, then `listings` (idempotent on the CoStar ids). Never delete: rows missing from the kit get `active = false`.
 5. Print a report: records read, rejected, with coordinates, with a photo, with a rent, floor plans per community. This is also the "how many LA rows have usable coordinates" answer for the mentors.
 
-**Search over the data**: `search_apartments` (agent tool) and the map/deck queries hit `floor_plans` + `communities` in SQL: rent range vs combined budget, beds, area, and a bbox for the map viewport.
+**Search over the data**: `search_apartments` (agent tool) and the map/deck queries hit `listings` + `communities` in SQL: rent range vs combined budget, beds, area, and a bbox for the map viewport.
 
 **Honest labeling**: the kit may be a snapshot. Show "Rent from kit · availability not confirmed" wherever availability matters; do not call anything "available now."
 
@@ -410,34 +456,56 @@ Matterport (3D tours, Model API, Showcase SDK) is not part of this build. The li
 
 ## 7. Matching and scoring (pure code, `lib/match/`)
 
-### 7.1 Define the units once
+### 7.1 Units and the feasibility rule (settled)
 
-- `profiles.budget_max` = the most this person will pay **per month as their share**.
-- Rent split is **equal** by default (listing rent ÷ number of roommates), with an option to split by bedroom size later.
-- A flock's **combined budget** = sum of members' `budget_max`. The guide's example: $1,500 + $1,800 + $1,400 = $4,700.
-- **Hard constraints** filter first; **soft preferences** then rank.
+- `profiles.budget_max` = the most this person will pay per month as their share.
+- **Flocks are any size from 2 up.** Three is fine; nothing assumes four. Every calculation uses the flock's **active members** (`flock_members.status = 'active'`); `flocks.max_size` only caps who may join.
+- **Combined budget** = the sum of the active members' `budget_max`. Example: $1,500 + $1,800 + $1,400 = $4,700.
+- **A listing is feasible if the combined budget covers its rent.**
+- **Rent ranges.** `listings.price` is the lowest asking rent (`rent_min`, shown as "from"). `rent_min ≤ combined budget` passes. If `rent_max` also fits the criterion reads "fits"; if only the low end fits it reads "fits at the low end" and is a warning, since the exact unit may cost more.
+- **Suggested split** (shown as "estimated rent per person"): each person's share is `rent × budget_max ÷ combined budget`. When the rent fits, nobody's share exceeds their own cap. For $4,500 and the caps above: $1,436 / $1,723 / $1,340. If an equal split also fits every cap, show that instead. It is a suggestion; the flock can agree on a different split.
+- **Bedrooms.** Default: one bedroom per active member (`bedrooms_needed` null). A flock can set it lower (couples, shared rooms); the hard rule is `beds ≥ bedrooms_needed`.
+- **Room to grow.** If `max_size` is above the active count, show headroom (combined budget minus rent). Nothing assumes a missing person's budget.
+- Hard constraints filter first; soft preferences then rank.
 
 ### 7.2 Listing fit (hard constraints, then score)
 
-Hard (a listing fails if any are false): `rent ≤ combined budget`; `beds ≥ people needing their own room` (a 2-bd for 3 people fails unless the flock explicitly accepts shared rooms); every member's own `budget_max ≥` their share; pets allowed if anyone needs it (unknown pets = warn, not fail); inside accepted areas.
+Hard (a listing fails if any is false): feasibility (§7.1); `beds ≥ bedrooms_needed`; pets allowed if anyone needs it (unknown = warning, not fail); inside the accepted areas (canonical LA neighborhood names).
 
 Soft, each scored 0–1 with a recorded reason: affordability margin, neighborhood match, move-in timing, extra amenities from kit/enrichment, `$ / sqft`. Output:
 
 ```ts
-type Fit = { passes: boolean; score: number; criteria: { key: string; ok: boolean | null; detail: string }[] };
+type Criterion = { key: string; ok: boolean | null; detail: string };   // null = unknown (missing data)
+type Fit = { passes: boolean; criteria: Criterion[]; fitPct: number; suggestedSplit: { userId: string; share: number }[] };
 ```
 
-`ok: null` means unknown (missing data). The UI shows criteria as a checklist, and the agent's explanation is written from this structure, so it can't invent reasons.
+`fitPct` is the share of *known* criteria (`ok !== null`) that are true, 0–100. The UI shows `criteria` as a checklist, and the agent's explanation is written from this structure, so it can't invent reasons.
 
-### 7.3 Flock score (keep what exists)
+**Reimplementing `groupMatch`.** The existing four-check `groupMatch` is rebuilt on `fit()`. `Match { met, total, pct }` keeps its shape (`met` = criteria that are true, `total` = criteria that are not null), so "Matches 3 of 4 flock prefs", the 30% term in `flockScore` and `lib/compare.test.ts` keep working.
 
-`flockScore = round(70 × (likes / groupSize) + 0.3 × fit%)` per the Figma dev note, in `lib/compare.ts`. Per-user custom weights in Compare stay as designed. The score shown on a shortlist item is `shortlist.score`, computed server-side with the same function.
+**No results.** If nothing passes, return the **closest misses**: listings failing the fewest hard constraints, each with the failing constraint and a suggested relaxation (raise the budget by up to 10%, widen areas, drop pets). The agent offers these instead of only saying "nothing found."
 
-### 7.4 Roommate compatibility and open-flock joining
+### 7.3 Voting and the flock score
 
-`compat(person, flock)` returns pass/fail per rule the owner switched on in 00h: budget overlap, bedrooms + move-in within 30 days, at least one shared area, and no clash with dealbreakers. Habit fields (sleep, cleanliness, guests, smoking, noise) feed a soft similarity score for ranking candidates.
+Voting is **thumbs up / thumbs down** (§2.3), stored in `swipes` with a `flock_id`.
 
-**Consent decision (needs the team's sign-off).** The track guide says every person must accept before a group forms. Our Open flock design lets compatible people join instantly. Proposed reconciliation: *the owner's rules are standing consent from existing members* (shown to them when they join the flock), joiners see only the public profile before joining, and full profiles are shared after. Any member can remove someone. Agent-proposed groups always require an explicit accept from every person.
+`flockScore = round(70 × (thumbs-up ÷ active members) + 0.3 × fitPct)` per the Figma dev note, in `lib/compare.ts`. It is **computed on read** from the current votes and members, never stored, so it cannot go stale when someone votes or the flock changes. Per-user custom weights in Compare stay as designed.
+
+**Thumbs-down rule.** Any thumbs-down marks the item "contested". When thumbs-down reaches half the active members, rounded up (1 of 2, 2 of 3, 3 of 5), the item leaves the active shortlist. It is kept in history so it is not suggested again. Changing a vote updates that person's row.
+
+**Membership changes.** When someone joins or leaves, fit and scores recompute on read automatically. The shortlist is reviewed once by `process_feedback`, because the combined budget changed (§8.8).
+
+### 7.4 Roommate compatibility, open-flock joining, privacy
+
+`compat(person, flock)` returns pass/fail per rule the owner switched on in 00h: budget overlap, bedrooms + move-in within 30 days, at least one shared area, and no clash with dealbreakers. Habits feed a soft similarity score for ranking candidates.
+
+**Deterministic by design.** Dealbreakers and habits are **structured tags** (smoking, pets, overnight guests, noise, early/late sleeper, cleanliness 1–5, and so on). The free text a person writes ("About you", "Dealbreakers") is for humans. When they save it, an LLM extracts tags into `dealbreaker_tags` and `habits`; the user can see and edit them. `compat()` compares only the tags, in code, so the result is repeatable.
+
+**Joining is one transaction.** `join_flock(flock_id)` is a Postgres function (security definer): it locks the flock row, checks `open_to_join`, `max_size` and the owner's rules against the caller's profile, and inserts the member, or a `requested` row if the rules fail. Two people joining the last spot at the same time cannot both succeed.
+
+**Privacy.** A requester never receives another person's budget, habits or dealbreakers before that person accepts. `find_roommates` and Find a Flock read the `public_profiles` view (discoverable users only) and compute compatibility on the server. Their output carries coarse reasons ("budgets overlap", "similar schedules"), not raw values.
+
+**Consent decision (needs the team's sign-off).** The track guide says every person must accept before a group forms. Our Open flock design lets compatible people join instantly. Proposed reconciliation: *the owner's rules are standing consent from existing members* (shown to them when they join the flock), joiners see only the public profile before joining, and full profiles are shared after. Any member can remove someone. Agent-proposed groups always require an explicit accept from every person (`proposals`, §5.3).
 
 ---
 
@@ -473,7 +541,7 @@ Subagents are plain objects: `{ name, description, systemPrompt, tools, model? }
 | Tool | Owner | Does | Backed by |
 |---|---|---|---|
 | `parse_preferences` | searcher, orchestrator | The model fills a schema (budget, beds, areas, move-in, pets, visual phrases, non-visual wishes); the tool validates and normalizes it | zod + `lib/match` |
-| `search_profiles`, `score_compat`, `propose_group` | roommate-matcher | Candidates, per-rule compatibility, **proposals only** | `lib/match/compat.ts` |
+| `search_profiles`, `score_compat`, `propose_group` | roommate-matcher | Candidates from `public_profiles` (discoverable users only), coarse reasons only (never raw budgets or habits), **proposals only** (`proposals` tables) | `lib/match/compat.ts` |
 | `search_apartments`, `rank_apartments`, `get_listing_media` | apartment-searcher | SQL filter on floor plans, hard-constraints-then-score, photos | `lib/match/listing-fit.ts`, `listing_media` |
 | `aerial_search`, `property_attributes` | aerial-evidence | Vexcel semantic search / attributes with cache and budget | `lib/enrich/vexcel.ts`, `aerial_queries` |
 | `update_shortlist` | orchestrator | **Write** picks + explanations to `shortlist` | Supabase |
@@ -483,6 +551,7 @@ Subagents are plain objects: `{ name, description, systemPrompt, tools, model? }
 ### 8.4 Safety rules
 
 - `userId` and `flockId` come from `runtime.context`, never from model arguments.
+- Tools query Supabase with a **user-scoped client** built from the caller's access token, so RLS applies; the service-role key is never used inside tools. Thread ids are derived on the server (`flock:<flockId>:user:<userId>`), never accepted from the client.
 - `propose_group` creates proposals only; nobody joins a flock without an accept. `send_invites` interrupts for the requester first.
 - Tools return structured JSON including `criteria[]` with `ok: true | false | null`. The prompt forbids stating any rent, score or amenity that is not in a tool result. Final answers carry ids; the UI loads the numbers itself.
 - Scraped text and profile prose are quoted data, never instructions.
@@ -542,19 +611,19 @@ import { requireUser, assertActiveMember } from '@/lib/server/auth';
 
 export async function POST(req: Request) {
   const user = await requireUser(req);                     // 401 if signed out
-  const { flockId, message, threadId } = await req.json();
+  const { flockId, message } = await req.json();
   await assertActiveMember(user.id, flockId);
 
   const stream = await flockAgent.stream(
     { messages: [{ role: 'user', content: message }] },
-    { streamMode: ['updates', 'messages'], context: { userId: user.id, flockId }, configurable: { thread_id: threadId } },
+    { streamMode: ['updates', 'messages'], context: { userId: user.id, flockId }, configurable: { thread_id: `flock:${flockId}:user:${user.id}` } },
   );
   // Forward each [mode, data] chunk as one NDJSON line: todos, subagent steps, tokens, __interrupt__.
   return new Response(toNdjson(stream), { headers: { 'Content-Type': 'application/x-ndjson' } });
 }
 ```
 
-An approval resumes the same thread: `POST /api/agent/resume` calls `flockAgent.invoke(new Command({ resume: { decisions } }), { configurable: { thread_id } })` (`Command` from `@langchain/langgraph`), one decision per pending action, in order.
+An approval resumes the same thread: `POST /api/agent/resume` calls `flockAgent.invoke(new Command({ resume: { decisions } }), { configurable: { thread_id } })` (`Command` from `@langchain/langgraph`), one decision per pending action, in order. The thread id is derived server-side the same way, and resume verifies that the pending action belongs to the caller.
 
 ### 8.6 Runtime notes and risks **[verify]**
 
@@ -572,7 +641,8 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 
 - **Ask Flock sheet** (from the Flock tab and Flock Picks): the plan renders as a checklist, subagent steps as short status lines ("Aerial check 7 of 20"), results as cards in the shared shortlist.
 - An interrupt renders an approval card ("Invite Maya and Sam to The Nest?"); approve or reject resumes the thread.
-- A rejection (thumbs-down on a pick or "too far") calls `process_feedback`; the shortlist updates live through realtime (§11).
+- A thumbs-down is written to `swipes` directly (with an optional reason chip); the client then calls `POST /api/agent/feedback`, which runs a short, rate-limited `process_feedback` task: record the reason in `flock_feedback`, apply the removal rule (§7.3), re-search if needed, and update the shortlist. Everyone sees the change through realtime (§11).
+- A change in membership triggers the same task once to review the shortlist against the new combined budget.
 
 ### 8.9 Ducktect best option (search bar)
 
@@ -593,6 +663,14 @@ Phase 1: learned preferences live in our own tables (`flocks.filters`, `flock_fe
 7. The map restyles: top results numbered, best option highlighted. A bottom sheet shows the best option: photo (kit or apartments.com), rent range, fit %, reasons, an aerial thumbnail with the evidence line, "also considered," and "Not checked: quiet." Actions: open listing, **Add to flock picks**, refine.
 
 **Read-only by design.** Ducktect uses its own agent instance (`ducktect-agent.ts`) with only the searcher and aerial subagents and **no write tools**. Saving to the shortlist is an explicit tap, which then calls the normal write path. Least privilege and no surprise changes to the flock's data.
+
+**Context and scope rules**
+
+- **Solo mode.** With no flock yet, Ducktect runs on the user's own profile as a one-person flock. With a flock it uses the flock's combined budget and members.
+- **Area precedence.** A place named in the text ("in Silver Lake") overrides the map viewport (resolved with Google geocoding; the map moves there). Otherwise the viewport is the area.
+- **Candidate cap.** If more than about 25 listings pass the hard filters, pre-rank them by fit score and aerial-check the top 25. The result states "checked 25 of 63" so a hidden candidate is never implied to have been considered.
+- **Evidence caveat.** In dense areas a search buffer may pick up a neighbor's pool or trees. Prefer parcel-level property attributes where available, and word results as "nearby."
+- **Cost.** Per-user rate limit and a daily call budget on `/api/ducktect` and `/api/agent`.
 
 **Result contract** (`responseFormat`). The model returns ids and reasons; the UI loads facts, scores and evidence from the database and tool outputs by id, so a model slip cannot show a wrong number:
 
@@ -624,12 +702,14 @@ export const DucktectResult = z.object({
 |---|---|
 | `POST /api/agent` | Deep Agent chat; streams plan, subagent steps, tokens, interrupts |
 | `POST /api/agent/resume` | Approve or reject a paused action (e.g. invites) |
+| `POST /api/agent/feedback` | After a thumbs-down: reason chip → short `process_feedback` task; also run on membership changes |
+| `POST /api/proposals/[id]/respond` | Accept or decline an agent-proposed group; creates the flock when all accept |
 | `POST /api/ducktect` | Read-only agent for the search bar's "Ducktect best option"; streams steps, returns ranked picks |
 | `POST /api/flocks` | Create flock (friends/open) with validation |
-| `POST /api/flocks/[id]/join` | Check open-flock rules, then join or create a request |
+| `POST /api/flocks/[id]/join` | Calls the `join_flock` database function (one transaction: lock, rules, `max_size`) |
 | `POST /api/flocks/[id]/invites` | Invite by username/email |
 | `GET /api/flocks/discover` | Open flocks ranked by compatibility with the caller |
-| Reads/writes for swipes, stash, tours, votes | Stay in `lib/api.ts` over Supabase under RLS |
+| Reads/writes for thumbs votes (`swipes` + `flock_id`), stash, tours | Stay in `lib/api.ts` over Supabase under RLS |
 
 Tours: the kit has no agent contact data, so the "open tour dates from the agent" in the Book Tour sheet are **simulated slots** (a `tour_slots` table seeded per demo listing) and must be labeled as sample data until we have a real source.
 
@@ -639,6 +719,9 @@ Tours: the kit has no agent contact data, so the "open tour dates from the agent
 
 - Supabase Auth (email + password, matching 00b/00c). Replace `CURRENT_USER_ID` with the session user; keep `UserSwitcher` only behind `NEXT_PUBLIC_DEMO=1` so two phones can act as two seeded people.
 - `proxy.ts`: redirect signed-out users to `/signin` (optimistic only).
+- **Server auth.** The app uses a browser Supabase client with the session in localStorage, so Route Handlers cannot see it. The client sends `Authorization: Bearer <access token>`; `requireUser` verifies it with `supabase.auth.getUser(token)` and builds a user-scoped client from the same token. (The alternative is `@supabase/ssr` cookies; pick one before building `proxy.ts`.)
+- **Accounts.** Real profiles use `profiles.id = auth.users.id`. Seeded fictional profiles for the matching demo are `profiles` rows with no auth user, flagged `is_demo` and `discoverable`.
+- **Abuse limits.** Per-user rate limits and a daily budget on `/api/agent`, `/api/agent/feedback` and `/api/ducktect`, since each call spends model credits.
 - RLS on every table (§5.4). Service-role key only in server code and scripts.
 - Secrets: `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VEXCEL_API_KEY`, `COSTAR_ZIP_PASSWORD` are server/script only. Existing public vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID`.
 - Treat profile prose and scraped page text as untrusted input: never put it in a position where it can act as instructions to the agent (pass as quoted data), and never render scraped HTML.
@@ -647,13 +730,13 @@ Tours: the kit has no agent contact data, so the "open tour dates from the agent
 
 ## 11. Realtime
 
-Existing pattern (`subscribeToMessages`, `subscribeToGroupSwipes`) is right. Extend to `shortlist` and `listing_comments`, one channel per flock, filtered by `flock_id` (fixes the unfiltered swipes subscription, §3.1). Debounce refetches as `app/page.tsx` already does.
+Existing pattern (`subscribeToMessages`, `subscribeToGroupSwipes`) is right. Extend to `shortlist`, `swipes` (thumbs votes) and `listing_comments`, one channel per flock, filtered by `flock_id` (fixes the unfiltered swipes subscription, §3.1). Debounce refetches as `app/page.tsx` already does.
 
 ---
 
 ## 12. Testing
 
-- Keep `node --test` for pure code. Add tests for: `compat`, `listing-fit` (hard constraints, unknown handling), `rent-split`, kit mapping (`lib/costar/map.ts`), and `apartments-com.parse()` against saved fixtures.
+- Keep `node --test` for pure code. Add tests for: `compat`, `listing-fit` (hard constraints, unknown handling, closest misses), feasibility and suggested-split math (the $4,700 / $4,500 example, and 2-, 3- and 5-person flocks), rent-range handling (low end passes, high end warns), the thumbs-down removal threshold, `join_flock` under concurrent calls, kit mapping (`lib/costar/map.ts`), and `apartments-com.parse()` against saved fixtures.
 - Ingestion has a built-in check: the report counts (§6.1). Eyeball 10 random rows against the raw record.
 - Agent: a small fixture set (three profiles, ten floor plans, expected top pick and expected exclusions); assert that `update_shortlist` is called and that no rent/score appears in the answer that isn't in a tool result.
 - Ducktect: fixtures for the prose splitter (hard / visual / not-checkable) on 10 sample queries; Vexcel mocked with canned responses; assert the Ducktect agent has no write tools; assert the degraded modes (Vexcel down, no visual phrases, no results).
@@ -668,10 +751,10 @@ Order is by what the demo needs; the demo path is bold.
 
 | Phase | Work | Done when |
 |---|---|---|
-| **0 Foundation** | Export schema and seed to `supabase/migrations/`; confirm and enable RLS; `.gitignore` for `data/` and `.cache/`; rename to Flock; env vars | A teammate can recreate the DB from the repo |
+| **0 Foundation** | Export schema and seed to `supabase/migrations/`; confirm and enable RLS; `.gitignore` for `data/` and `.cache/`; rename to Flock; env vars; clear the Brooklyn seed rows (swipes, stash, tours, messages) when the real listings land | A teammate can recreate the DB from the repo |
 | **1 Real listings** | **Read the kit docs; `ingest-costar.ts`; `listings` view; switch the map center and seed group to LA** | Map and swipe deck show real LA floor plans |
 | 2 Image enrichment | Permission note; `enrich-apartments-com.ts` for the demo properties first; gallery in `ListingReel`; photo credit | Demo listings have several photos, and the app looks fine without them |
-| **3 Flocks and matching** | `flocks`/`flock_members` migration; Friends/Open creation; `compat`, `listing-fit`; seeded fictional profiles for the demo | Create a flock, join an open one by rules, see why a place fits |
+| **3 Flocks and matching** | `flocks`/`flock_members` migration; `swipes.flock_id` and thumbs votes; `proposals`; `join_flock`; Friends/Open creation; `compat`, `listing-fit`; seeded fictional profiles for the demo | Create a flock, join an open one by rules, see why a place fits |
 | **4 Deep Agent** | Smoke test `deepagents` + model; orchestrator and `roommate-matcher` / `apartment-searcher` subagents; `update_shortlist`, `send_invites` (interrupt), `process_feedback`, `agent_runs`; streaming "Ask Flock" sheet | "We need 3 bedrooms under $4,700" yields a plan, a roommate proposal and a saved, explained shortlist |
 | **5 Vexcel + Ducktect** | `lib/enrich/vexcel.ts`, `aerial_queries`, `aerial-evidence` subagent, pre-warm script; "Ducktect best option" in `MapSearch`; `/api/ducktect`; result sheet and map restyle | Typing a prose wish and picking Ducktect returns ranked picks with aerial evidence |
 | 6 Auth | Supabase Auth screens, `proxy.ts`, remove hard-coded ids, demo switcher behind a flag | Real sign-in works; two phones still demo |
@@ -703,6 +786,9 @@ Order is by what the demo needs; the demo path is bold.
 5. **Photos: hotlink or copy to Supabase Storage** (§6.2). Copy is more reliable for the demo.
 6. **Agent hosting.** A long-lived Node server for the demo (§8.6), or add a durable checkpointer.
 7. **Ducktect label and placement.** "Ducktect best option" is spelled as written by the team; confirm, then add the dropdown state and result sheet to Figma.
+8. **Settled:** a place is feasible if the flock's combined budget covers the rent, and flocks are any size from 2 up (3 is fine; nothing assumes 4).
+9. **Settled:** voting is thumbs up / thumbs down (§2.3).
+10. **Defaults chosen in this patch (confirm or change):** one card or pin per *community* showing the best-fitting floor plan, with votes and shortlist items on the floor plan; a place leaves the active shortlist when thumbs-down reaches half the flock (rounded up); a group proposal needs every invitee to accept, with a "continue as a smaller flock?" prompt if someone declines; the Brooklyn seed rows are wiped at cutover; tools use a user-scoped Supabase client; per-user rate limits on agent endpoints.
 
 **To confirm with CoStar mentors / kit docs**
 
