@@ -50,6 +50,7 @@ export default function DucktectPanel({
   onRetry: () => void;
   onRefine: () => void;
 }) {
+  const [min, setMin] = useState(false); // collapsed to just the header, so the map stays visible
   const r = state.result;
   const pick = r?.picks.find((p) => p.rank === focusRank) ?? r?.picks[0] ?? null;
 
@@ -58,22 +59,30 @@ export default function DucktectPanel({
     // panel would turn see-through): the scrolling happens in the inner div.
     <section
       aria-live="polite"
-      aria-label="Ducktect best option"
+      aria-label="Ask Ducktective"
       className="rough pointer-events-auto flex max-h-[68dvh] w-full flex-col rounded-lg text-left [--fill:var(--color-card)]"
     >
       <header className="flex shrink-0 items-center gap-2.5 px-3.5 pt-3.5 pb-2">
         <Ducktective height={34} />
         <div className="min-w-0 flex-1">
-          <p className="text-[19px] leading-tight font-bold text-ink">Ducktect best option</p>
+          <p className="text-[19px] leading-tight font-bold text-ink">Ask Ducktective</p>
           <p className="truncate text-[14px] text-muted">“{state.text}”</p>
         </div>
-        <button onClick={onClose} aria-label="Close Ducktect" className="shrink-0 p-1">
+        {state.phase === 'done' && (
+          <button onClick={() => setMin((m) => !m)} aria-label={min ? 'Expand Ducktective' : 'Minimize Ducktective'} aria-expanded={!min} className="shrink-0 p-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/down.svg" alt="" width={18} height={18} className={`transition-transform duration-300 ${min ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+        <button onClick={onClose} aria-label="Close Ducktective" className="shrink-0 p-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/close.svg" alt="" width={16} height={16} />
         </button>
       </header>
 
-      <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-3.5 pb-3.5">
+      {/* grid 1fr/0fr animates the collapse; the inner box clips instead of scrolling while closed */}
+      <div className={`grid min-h-0 flex-1 transition-[grid-template-rows] duration-300 ${min && state.phase === 'done' ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}>
+      <div className={`no-scrollbar flex min-h-0 flex-col gap-2.5 overflow-y-auto px-3.5 ${min && state.phase === 'done' ? 'overflow-hidden pb-0' : 'pb-3.5'}`}>
         {state.phase === 'running' && <Progress steps={state.steps} />}
 
         {state.phase === 'error' && (
@@ -141,6 +150,7 @@ export default function DucktectPanel({
             </ul>
           </>
         )}
+      </div>
       </div>
     </section>
   );
