@@ -2,10 +2,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
-import { getStash, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
+import { getStash, sendFeedback, stash, swipe, undoSwipe, unstash, type GroupListing } from '@/lib/api';
 import { money, specs, area } from '@/lib/format';
 import ListingPhoto from './ListingPhoto';
 import Icon, { type IconName } from './Icon';
+import ReasonSheet from './ReasonSheet';
 
 type Direction = 'left' | 'right';
 type CardHandle = { fling: (dir: Direction) => void };
@@ -36,7 +37,8 @@ export default function ListingReel({
   const [history, setHistory] = useState<GroupListing[]>([]);
   const [stashed, setStashed] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<Direction | null>(null);
+  const [toast, setToast] = useState<Direction | 'updated' | null>(null);
+  const [asking, setAsking] = useState<GroupListing | null>(null); // the place just thumbed down, while the reason sheet is open
   const card = useRef<CardHandle>(null);
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function ListingReel({
     setDeck((d) => d?.filter((l) => l.id !== listing.id) ?? d);
     setHistory((h) => [...h, listing]);
     if (empty) setToast(dir);
+    if (dir === 'left') setAsking(listing);
     swipe(listing.id, dir).catch((e) => {
       setError(e.message);
       setDeck((d) => (d ? [listing, ...d] : d));
@@ -65,9 +68,16 @@ export default function ListingReel({
     });
   }
 
+  function sendReasons(reasons: string[]) {
+    if (!asking) return;
+    setAsking(null);
+    sendFeedback(asking.id, reasons).then(() => setToast('updated')).catch((e) => setError(e.message));
+  }
+
   function undo() {
     const last = history.at(-1);
     if (!last) return;
+    setAsking(null);
     setToast(null);
     setHistory((h) => h.slice(0, -1));
     setDeck((d) => [last, ...(d ?? [])]);
@@ -133,10 +143,12 @@ export default function ListingReel({
             className="absolute inset-x-0 top-[calc(max(10px,env(safe-area-inset-top))+64px)] flex justify-center"
           >
             <div className="rough flex items-center gap-4 rounded-lg px-4 py-2 text-base font-bold text-card [--fill:var(--color-ink)]">
-              {toast === 'right' ? 'Added to Flock picks' : 'Skipped · won’t show again'}
-              <button onClick={undo} className="text-accent-soft underline">
-                Undo
-              </button>
+              {toast === 'right' ? 'Added to Flock picks' : toast === 'updated' ? 'Got it · re-checking your picks' : 'Skipped · won’t show again'}
+              {toast !== 'updated' && (
+                <button onClick={undo} className="text-accent-soft underline">
+                  Undo
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -156,6 +168,7 @@ export default function ListingReel({
           <Action icon="undo" label="Back" onClick={undo} disabled={!history.length} />
         </div>
       )}
+      <ReasonSheet open={!!asking} onSkip={() => setAsking(null)} onSubmit={sendReasons} />
     </main>
   );
 }

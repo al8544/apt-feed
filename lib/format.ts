@@ -64,3 +64,11 @@ export function parseDateOnly(d: string) {
   const [y, m, day] = d.slice(0, 10).split('-').map(Number);
   return new Date(y!, (m ?? 1) - 1, day ?? 1);
 }
+
+// Straight-line miles between two points (haversine). Matches flock_pin_distances in migration 0016.
+export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lng - a.lng) * r) / 2) ** 2;
+  return 3958.8 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+export const miles = (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} mi`;

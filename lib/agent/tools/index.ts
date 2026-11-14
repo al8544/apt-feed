@@ -4,20 +4,22 @@ import { tool } from 'langchain';
 import { closestMisses, fit } from '../../match/listing-fit.ts';
 import { combinedBudget } from '../../match/rent-split.ts';
 import {
-  contextSchema, processFeedbackInput, rankApartmentsInput, searchApartmentsInput, sendInvitesInput, updateShortlistInput,
+  contextSchema, findOpenFlocksInput, processFeedbackInput, rankApartmentsInput, searchApartmentsInput, sendInvitesInput, updateShortlistInput,
 } from '../schemas.ts';
+import { explain, rerunShortlist } from '../feedback.ts';
 import type { AgentStore, Plan } from '../store.ts';
+
+export { explain };
+
+// Open flocks the caller could join, with coarse reasons only (docs/DESIGN.md §7.4). Supplied by the server so the agent never holds the service key.
+export type FlockFinder = (userId: string) => Promise<{ flockId: string; name: string; matchPct: number; passes: boolean; reasons: string[] }[]>;
 
 const ctxOf = (runtime: { context?: unknown }) => contextSchema.parse(runtime.context);
 const json = (v: unknown) => JSON.stringify(v);
 const fact = (p: Plan) => ({ id: p.id, address: p.address, community: p.communityName, rentFrom: p.rentMin, beds: p.beds, baths: p.baths, sqft: p.sqft, pets: p.pets });
 const NOTE = 'rentFrom is the starting monthly rent of the floor plan from a data kit; availability is not confirmed. null means unknown.';
 
-// "budget: fits the combined budget of $4,700; beds: 3 bd for 3 needed". Built from the checks, so it cannot contain a made-up number.
-export const explain = (criteria: { key: string; ok: boolean | null; detail: string }[]) =>
-  criteria.map((c) => `${c.key}: ${c.detail}${c.ok === null ? ' (unknown)' : c.ok ? '' : ' (fails)'}`).join('; ');
-
-export function makeTools(store: AgentStore) {
+export function makeTools(store: AgentStore, findFlocks?: FlockFinder) {
   const search_apartments = tool(
     async (input) => {
       const plans = await store.searchPlans({ maxRent: input.maxRent, beds: input.beds, limit: 25 });
@@ -74,10 +76,21 @@ export function makeTools(store: AgentStore) {
     async (input, runtime) => {
       const { flockId, userId } = ctxOf(runtime);
       await store.recordFeedback(flockId, userId, input.listingId, input.reason);
-      return json({ recorded: true, shortlist: (await store.shortlist(flockId)).map((r) => ({ listingId: r.listingId, status: r.status })) });
+      const { savedIds, ruledOutBy } = await rerunShortlist(store, flockId); // the reasons tighten the search in code, not in the model
+      return json({ recorded: true, ruledOutBy, shortlistNow: savedIds, note: savedIds.length ? undefined : 'nothing passes after the feedback, so the shortlist was left as it was' });
     },
-    { name: 'process_feedback', description: 'Record why someone rejected a place. Marks it contested on the shortlist.', schema: processFeedbackInput },
+    { name: 'process_feedback', description: 'Record why someone rejected a place, then search again without what that rules out and update the shortlist.', schema: processFeedbackInput },
   );
 
-  return { search_apartments, rank_apartments, update_shortlist, send_invites, process_feedback };
+  // Read-only, for the roommate-matcher subagent.
+  const find_open_flocks = tool(
+    async (_input, runtime) => {
+      const { userId } = ctxOf(runtime);
+      const flocks = findFlocks ? (await findFlocks(userId)).slice(0, 5) : [];
+      return json({ count: flocks.length, flocks, note: 'Reasons are coarse on purpose: no one\'s budget, habits or dealbreakers are shown. This only suggests; nothing is saved or sent.' });
+    },
+    { name: 'find_open_flocks', description: 'List open flocks this person could join, best match first, with coarse reasons.', schema: findOpenFlocksInput },
+  );
+
+  return { search_apartments, rank_apartments, update_shortlist, send_invites, process_feedback, find_open_flocks };
 }

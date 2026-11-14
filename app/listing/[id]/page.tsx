@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getFloorPlans, getGroupMembers, getMapListings, getStash, stash, unstash, type FloorPlan, type GroupListing } from '@/lib/api';
-import { money, specs, area } from '@/lib/format';
+import { getFloorPlans, getGroupMembers, getMyPin, getMapListings, getStash, stash, unstash, type FloorPlan, type GroupListing, type Pin } from '@/lib/api';
+import { money, specs, area, miles, milesBetween } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import PhotoCarousel from '@/components/PhotoCarousel';
 import NavBar from '@/components/NavBar';
@@ -14,6 +14,7 @@ export default function ListingDetailPage() {
   const router = useRouter();
   const [listing, setListing] = useState<GroupListing | null | undefined>(undefined);
   const [plans, setPlans] = useState<FloorPlan[]>([]);
+  const [pin, setPin] = useState<Pin | null>(null);
   const [size, setSize] = useState(0);
   const [stashed, setStashed] = useState(false);
   const [booking, setBooking] = useState<GroupListing | null>(null);
@@ -25,6 +26,7 @@ export default function ListingDetailPage() {
       if (l?.community_id) getFloorPlans(l.community_id).then(setPlans).catch(() => {});
     }).catch(() => setListing(null));
     getGroupMembers().then((m) => setSize(m.length)).catch(() => {});
+    getMyPin().then(setPin).catch(() => {});
     getStash().then((ls) => setStashed(ls.some((l) => l.id === id))).catch(() => {});
   }, [id]);
 
@@ -57,6 +59,11 @@ export default function ListingDetailPage() {
           <p className="text-[17px] text-muted">
             {listing.address} · {area(listing)}
           </p>
+          {pin && (
+            <p className="text-base text-muted">
+              {miles(milesBetween(pin, listing))} from your pin{pin.label ? ` · ${pin.label}` : ''}
+            </p>
+          )}
           <div className="flex items-center gap-2.5 pt-2.5">
             <div className="flex">
               {listing.likedBy.slice(0, 4).map((p) => (
