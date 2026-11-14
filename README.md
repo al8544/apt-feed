@@ -48,6 +48,9 @@ psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQ
 Then copy the project URL and anon key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 Locally: `supabase start` and `supabase db reset` rebuild everything from these files.
 
+**Demo starts (local):** `npm run dev:local` first resets the local database's user data to a known scenario, so every run starts the same. It keeps the listings and deletes all accounts, flocks, swipes and tours.
+`npm run dev:local` starts **in-flock** (Vinnie is already in a flock, demo switcher). `npm run dev:local -- new-user` starts with no accounts: sign up, then start a friends flock or join one of 3 seeded open flocks. `npm run db:seed [-- new-user]` resets without starting the app. Details in `docs/LOCAL_DATABASE.md`.
+
 **Google Maps (local):** put `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAP_ID` in `.env.local` (git-ignored). `npm run dev:local` reads them. Keep the app on port 3000, where the key is allowed.
 
 **Until sign-in exists** the app acts as whichever person the switcher picks, using only the anon key, so with
