@@ -75,6 +75,16 @@ Check the result in Studio, or with `docker exec -i supabase_db_flock psql -U po
 npm run dev:local
 ```
 
+Every start first resets the user data to a scenario (`supabase/seeds/`, plus `dev-open-access.sql`). It wipes all accounts, flocks, swipes,
+stash, tours, proposals and agent runs. Listings are kept, so load the LA data once.
+
+| Command | Start |
+|---|---|
+| `npm run dev:local` | **in-flock**: Vinnie is in "Our Flock" with 4 friends, a few swipes and 2 tours on LA listings. Demo person switcher, no sign-in. |
+| `npm run dev:local -- new-user` | **new-user**: nobody exists. Sign up, then start a friends flock or join one of 3 seeded open flocks ranked by compatibility. Real sign-in. |
+
+`npm run db:seed [-- new-user]` resets without starting the app.
+
 It reads the local database's URL and key from `supabase status` and starts the app on port 3000, with nothing
 changed in `.env.local`. It stops with an error if the local database is not running. Stop the app with Ctrl+C.
 
