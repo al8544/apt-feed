@@ -1,14 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { GROUP_NAME } from '@/lib/format';
-import { inviteFriends } from '@/lib/share';
+import { inviteFriends, inviteLink } from '@/lib/share';
 import NavBar from '@/components/NavBar';
 
 // Figma "05b Invite Friends". shortcut: share/copy of the app link only; per-person invites and the
 // "Waiting to join" list need an invites table the API doesn't have.
 export default function InvitePage() {
   const [note, setNote] = useState<string | null>(null);
-  const link = typeof window !== 'undefined' ? window.location.origin : '';
+  const link = inviteLink();
   return (
     <main className="min-h-dvh bg-card pb-6">
       <NavBar title="Invite friends" />

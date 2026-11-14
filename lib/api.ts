@@ -2,20 +2,38 @@
 // UI code should import from this file only, never call supabase directly.
 import { supabase } from './supabase';
 
-// No real login yet: the "current user" is whichever crew member was picked in the
-// user switcher (saved in this browser), defaulting to Vinnie. Ids come from seed.sql.
-const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
+// Who you are and which flock you're looking at. With sign-in, SessionGate (components/SessionGate.tsx) sets both
+// from the Supabase session and the flock picked on "Your flocks", before any screen renders.
+// Demo mode (NEXT_PUBLIC_DEMO=1) keeps the old switcher: seeded people, no sign-in. Ids come from seed.sql.
+export const DEMO = process.env.NEXT_PUBLIC_DEMO === '1';
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+const DEMO_FLOCK_ID = '00000000-0000-0000-0000-0000000000a1';
 const USER_KEY = 'aptHunt.userId';
+const FLOCK_KEY = 'flock.current';
 
-function loadCurrentUser(): string {
+function stored(key: string): string | null {
   try {
-    return (typeof window !== 'undefined' && window.localStorage.getItem(USER_KEY)) || DEFAULT_USER_ID;
+    return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
   } catch {
-    return DEFAULT_USER_ID;
+    return null;
   }
 }
 
-export let CURRENT_USER_ID = loadCurrentUser();
+export let CURRENT_USER_ID = DEMO ? stored(USER_KEY) || DEMO_USER_ID : '';
+export let GROUP_ID = DEMO ? DEMO_FLOCK_ID : stored(FLOCK_KEY) || '';
+
+// Called once by SessionGate after it reads the session.
+export function setSessionUser(userId: string): void {
+  CURRENT_USER_ID = userId;
+}
+
+export const storedFlockId = () => (DEMO ? DEMO_FLOCK_ID : stored(FLOCK_KEY));
+
+// Pick the flock every screen reads (00d "Your flocks"). Remembered on this device.
+export function selectFlock(flockId: string): void {
+  try { window.localStorage.setItem(FLOCK_KEY, flockId); } catch { /* storage blocked: this visit only */ }
+  GROUP_ID = flockId;
+}
 
 // Switch who you are (demo only), then reload so every screen refetches as that person.
 export function switchUser(userId: string): void {
@@ -23,7 +41,45 @@ export function switchUser(userId: string): void {
   CURRENT_USER_ID = userId;
   window.location.reload();
 }
-export const GROUP_ID = '00000000-0000-0000-0000-0000000000a1';
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+  try { window.localStorage.removeItem(FLOCK_KEY); } catch { /* nothing stored */ }
+  CURRENT_USER_ID = '';
+  GROUP_ID = '';
+}
+
+// Your flocks (00d): active memberships with a few faces and a one-line summary.
+export type FlockSummary = {
+  id: string; name: string; kind: 'friends' | 'open'; maxSize: number | null;
+  members: Profile[]; areas: string[]; budgetMin: number | null; budgetMax: number | null;
+};
+
+export async function getMyFlocks(): Promise<FlockSummary[]> {
+  const mine = check(
+    await supabase.from('flock_members').select('flock_id').eq('user_id', CURRENT_USER_ID).eq('status', 'active')
+  ) as { flock_id: string }[];
+  if (!mine.length) return [];
+  const rows = check(
+    await supabase.from('flocks')
+      .select('id, name, kind, max_size, filters, flock_members(status, user:profiles(*))')
+      .in('id', mine.map((m) => m.flock_id))
+  ) as unknown as {
+    id: string; name: string; kind: 'friends' | 'open'; max_size: number | null;
+    filters: { areas?: string[]; budget_min?: number; budget_max?: number } | null;
+    flock_members: { status: string; user: Profile }[];
+  }[];
+  return rows.map((f) => ({
+    id: f.id, name: f.name, kind: f.kind, maxSize: f.max_size,
+    members: f.flock_members.filter((m) => m.status === 'active').map((m) => m.user),
+    areas: f.filters?.areas ?? [], budgetMin: f.filters?.budget_min ?? null, budgetMax: f.filters?.budget_max ?? null,
+  }));
+}
+
+// Invite link (/join/<flock id>): adds the signed-in user to that flock. Returns 'joined' | 'already_member' | 'full'.
+export async function joinByInvite(flockId: string): Promise<string> {
+  return check(await supabase.rpc('join_by_invite', { p_flock_id: flockId })) as string;
+}
 
 // ---------- Types ----------
 export type Listing = {

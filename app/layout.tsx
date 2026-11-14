@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Gaegu } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import MotionProvider from "@/components/MotionProvider";
+import SessionGate from "@/components/SessionGate";
 import "./globals.css";
 
 const gaegu = Gaegu({
@@ -33,7 +34,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </filter>
         </svg>
         <div className="group/app relative mx-auto min-h-dvh max-w-[430px] bg-surface pb-[calc(64px+env(safe-area-inset-bottom))]">
-          <MotionProvider>{children}</MotionProvider>
+          <MotionProvider>
+            {/* usePathname inside: needs a Suspense boundary on dynamic routes. */}
+            <Suspense fallback={null}>
+              <SessionGate>{children}</SessionGate>
+            </Suspense>
+          </MotionProvider>
           {/* usePathname is runtime data on dynamic routes like /map/[id]. */}
           <Suspense fallback={null}>
             <BottomNav />

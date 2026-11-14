@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { AUTH_PAGES } from './SessionGate';
 import Icon, { type IconName } from './Icon';
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
@@ -18,6 +19,7 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
 
 export default function BottomNav() {
   const pathname = usePathname();
+  if (AUTH_PAGES.includes(pathname) || pathname === '/flocks' || pathname.startsWith('/join/')) return null; // before you're in a flock
   const dark = pathname.startsWith('/reels') || pathname.startsWith('/map/'); // full-bleed photo screens
   return (
     <nav

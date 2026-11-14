@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { getAccountStats, getProfile, getStash, type Listing, type Profile } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { DEMO, getAccountStats, getProfile, getStash, signOut, type Listing, type Profile } from '@/lib/api';
 import { GROUP_NAME, money, area } from '@/lib/format';
 import Avatar from '@/components/Avatar';
 import ListingPhoto from '@/components/ListingPhoto';
@@ -14,6 +15,7 @@ import NavBar from '@/components/NavBar';
 type Stats = { swipes: number; stashed: number; tours: number };
 
 export default function AccountPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [stash, setStash] = useState<Listing[] | null>(null);
@@ -53,7 +55,7 @@ export default function AccountPage() {
         >
           Edit profile
         </button>
-        <UserSwitcher />
+        {DEMO && <UserSwitcher />}
       </section>
 
       {error && <p className="px-4 pt-2 text-[15px] text-danger">{error}</p>}
@@ -96,7 +98,7 @@ export default function AccountPage() {
 
       <Section label="Account">
         <SettingsRow label="Username" value={profile ? `@${profile.username}` : ''} chevron={false} divider />
-        <SettingsRow label="Flocks" value={GROUP_NAME} divider />
+        <SettingsRow label="Flocks" value={GROUP_NAME} onClick={() => router.push('/flocks')} divider />
         <SettingsRow label="Preferences" value="Budget, beds, pets" onClick={() => setEditOpen(true)} />
       </Section>
 
@@ -120,7 +122,7 @@ export default function AccountPage() {
       <Section label="Support">
         <SettingsRow label="Help & feedback" divider />
         <SettingsRow label="Leave flock" danger divider />
-        <SettingsRow label="Log out" danger />
+        {!DEMO && <SettingsRow label="Log out" danger onClick={async () => (await signOut(), router.replace('/welcome'))} />}
       </Section>
 
       <PreferencesSheet
