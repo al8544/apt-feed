@@ -15,6 +15,7 @@ import {
 import { timeAgo } from '@/lib/format';
 import PickCard from '@/components/PickCard';
 import BookTourSheet from '@/components/BookTourSheet';
+import CostarCredit from '@/components/CostarCredit';
 
 type Sort = 'newest' | 'liked' | 'unseen';
 type Pick = { listing: GroupListing; lastLikedAt: string };
@@ -147,6 +148,7 @@ export default function FlockPicksPage() {
         onClose={() => setTouring(null)}
         onBooked={(id, at) => router.push(`/tours?added=${id}&at=${at.toISOString()}`)}
       />
+    <CostarCredit />
     </main>
   );
 }

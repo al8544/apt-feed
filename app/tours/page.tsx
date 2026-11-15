@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TourCard from '@/components/TourCard';
 import Sheet from '@/components/Sheet';
 import BookTourSheet from '@/components/BookTourSheet';
+import CostarCredit from '@/components/CostarCredit';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -261,6 +262,7 @@ export default function ToursPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    <CostarCredit />
     </main>
   );
 }

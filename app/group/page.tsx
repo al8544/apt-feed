@@ -38,6 +38,7 @@ import FlockPinsMap from '@/components/FlockPinsMap';
 import { flockScore as score } from '@/lib/compare';
 import RankingRow from '@/components/RankingRow';
 import SmallerFlockPrompt from '@/components/SmallerFlockPrompt';
+import CostarCredit from '@/components/CostarCredit';
 
 
 export default function GroupPage() {
@@ -371,6 +372,7 @@ export default function GroupPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    <CostarCredit />
     </main>
   );
 }
