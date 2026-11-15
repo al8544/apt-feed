@@ -4,16 +4,49 @@ Collaborative apartment hunting: you and your flock swipe, shortlist, compare an
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Run it
+## Quick start (run it on your own computer)
+
+You need **Docker Desktop** (open and running), **Node 22+**, and `unzip`. Everything runs locally; nothing touches our real database.
+
+**1. Install and create the local database** (the first run downloads a few GB of Docker images, so allow a few minutes):
+
+```bash
+npm install
+npm run setup
+```
+
+**2. Add the listings.** The apartment data is the hackathon's CoStar kit, which we can't redistribute. Download the zip from the link in the hackathon packet (`F26 Onsite Hacker Packet.pdf`) and load it, using the zip's password from the same packet:
+
+```bash
+npm run db:ingest -- ~/Downloads/<kit-file>.zip <zip-password>
+```
+
+You should see a report ending in the number of communities and listings written.
+
+**3. Add your API keys.** Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` and `OPENAI_API_KEY` (the map and the Ducktect AI agent need them; the rest of the app works without). Leave the Supabase variables empty, because the next command points the app at the local database for you.
+
+**4. Run the app:**
+
+```bash
+npm run dev:local
+```
+
+Your browser opens http://localhost:3000. Sign in as **`vinnie@flock.test`** / **`flock1234`** (already in a flock with 4 friends), or press Sign up and make a new account. Each run resets the demo accounts and flocks (listings stay).
+
+To start as a brand-new user instead (no accounts, sign up and join one of 3 seeded flocks): `npm run dev:local -- new-user`.
+
+Stop the database when you're done: `npx supabase stop`.
+
+## More commands
 
 | Command | What you get |
 |---|---|
 | `npm run dev:local` | Local database reset to **in-flock**: sign in as `vinnie@flock.test` / `flock1234`, already in a flock with 4 friends (`maya@`, `jordan@`, `sam@`, `priya@flock.test` work too). Vinnie is admin of the open flock and `alex@flock.test` has a pending request to join. |
-| `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then start a friends flock or join one of 3 seeded open flocks. |
+| `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then make a friends flock or join one of 3 seeded open flocks. |
 | `npm run db:seed` / `npm run db:seed -- new-user` | Same reset, without starting the app. |
 | `npm run dev` | The app against the **real** project (`.env.local`). No reset. |
 
-Both `dev:local` commands open http://localhost:3000 in your browser once the app is ready, and first wipe all accounts, flocks, swipes, stash and tours in the local database and keep the listings. They need `supabase start` running (setup below, details in `docs/LOCAL_DATABASE.md`).
+Both `dev:local` commands first wipe all accounts, flocks, swipes, stash and tours in the local database and keep the listings. Details in `docs/LOCAL_DATABASE.md`.
 
 ## Getting Started
 
