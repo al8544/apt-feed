@@ -4,6 +4,17 @@ Collaborative apartment hunting: you and your flock swipe, shortlist, compare an
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Run it
+
+| Command | What you get |
+|---|---|
+| `npm run dev:local` | Local database reset to **in-flock**: Vinnie is already in a flock with 4 friends (demo person switcher, no sign-in). |
+| `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then start a friends flock or join one of 3 seeded open flocks. |
+| `npm run db:seed` / `npm run db:seed -- new-user` | Same reset, without starting the app. |
+| `npm run dev` | The app against the **real** project (`.env.local`). No reset. |
+
+Both `dev:local` commands first wipe all accounts, flocks, swipes, stash and tours in the local database and keep the listings. They need `supabase start` running (setup below, details in `docs/LOCAL_DATABASE.md`).
+
 ## Getting Started
 
 First, run the development server:
@@ -47,9 +58,6 @@ psql "$DATABASE_URL" -f supabase/dev-open-access.sql   # or paste it into the SQ
 
 Then copy the project URL and anon key into `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 Locally: `supabase start` and `supabase db reset` rebuild everything from these files.
-
-**Demo starts (local):** `npm run dev:local` first resets the local database's user data to a known scenario, so every run starts the same. It keeps the listings and deletes all accounts, flocks, swipes and tours.
-`npm run dev:local` starts **in-flock** (Vinnie is already in a flock, demo switcher). `npm run dev:local -- new-user` starts with no accounts: sign up, then start a friends flock or join one of 3 seeded open flocks. `npm run db:seed [-- new-user]` resets without starting the app. Details in `docs/LOCAL_DATABASE.md`.
 
 **Google Maps (local):** put `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAP_ID` in `.env.local` (git-ignored). `npm run dev:local` reads them. Keep the app on port 3000, where the key is allowed.
 
