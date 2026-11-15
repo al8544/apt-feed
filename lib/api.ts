@@ -9,8 +9,8 @@ import type { AgentEvent } from './agent/schemas';
 // from the Supabase session and the flock picked on "Your flocks", before any screen renders.
 // Demo mode (NEXT_PUBLIC_DEMO=1) keeps the old switcher: seeded people, no sign-in. Ids come from seed.sql.
 export const DEMO = process.env.NEXT_PUBLIC_DEMO === '1';
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-const DEMO_FLOCK_ID = '00000000-0000-0000-0000-0000000000a1';
+const DEMO_USER_ID = '00000000-0000-4000-8000-000000000001';
+const DEMO_FLOCK_ID = '00000000-0000-4000-8000-0000000000a1';
 const USER_KEY = 'aptHunt.userId';
 const FLOCK_KEY = 'flock.current';
 
@@ -123,6 +123,34 @@ export async function getMyPin(): Promise<Pin | null> {
 }
 export async function setMyPin(pin: Pin): Promise<void> {
   check(await supabase.from('member_pins').upsert({ user_id: CURRENT_USER_ID, ...pin, updated_at: new Date().toISOString() }));
+}
+// 05f Join requests: people asking to join the current (open) flock. Admins only; the server scores each against the flock's rules.
+export type JoinRequest = {
+  user: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_color' | 'about' | 'looking_for' | 'dealbreakers_text' | 'budget_max' | 'beds_min' | 'neighborhoods' | 'move_in' | 'pets'>;
+  requestedAt: string; matchPct: number | null; checks: { key: string; ok: boolean | null; reason: string }[];
+};
+export async function getJoinRequests(): Promise<JoinRequest[]> {
+  return (await json<{ requests: JoinRequest[] }>(await authFetch(`/api/flocks/${GROUP_ID}/requests`))).requests;
+}
+export async function answerJoinRequest(userId: string, approve: boolean): Promise<'approved' | 'declined' | 'full' | 'no_request'> {
+  const res = await supabase.rpc('answer_join_request', { p_flock_id: GROUP_ID, p_user_id: userId, p_approve: approve });
+  return check(res) as 'approved' | 'declined' | 'full' | 'no_request';
+}
+// How many are waiting (the badge on the Flock tab); 0 when you can't see them.
+export async function getJoinRequestCount(): Promise<number> {
+  const res = await supabase.from('flock_members').select('*', { count: 'exact', head: true }).eq('flock_id', GROUP_ID).eq('status', 'requested');
+  return res.count ?? 0;
+}
+
+// Everyone in the current flock who set a pin, you included (RLS "flockmates see pins", migration 0019). Only this flock's members, even if
+// you share another flock with someone.
+export type FlockPin = Pin & { user: Profile };
+export async function getFlockPins(): Promise<FlockPin[]> {
+  const members = check(await supabase.from('flock_members').select('user_id').eq('flock_id', GROUP_ID).eq('status', 'active')) as { user_id: string }[];
+  const rows = check(
+    await supabase.from('member_pins').select('lat,lng,label,user:profiles(*)').in('user_id', members.map((m) => m.user_id))
+  ) as unknown as FlockPin[];
+  return rows;
 }
 export async function clearMyPin(): Promise<void> {
   check(await supabase.from('member_pins').delete().eq('user_id', CURRENT_USER_ID));
@@ -275,6 +303,7 @@ export type Profile = {
   neighborhoods: string[] | null; move_in: string | null;
   // The three long answers on Find a flock (the agent reads them). Optional: only that screen asks for them.
   about?: string | null; looking_for?: string | null; dealbreakers_text?: string | null;
+  habits?: { sleep?: string; cleanliness?: number; guests?: string; smoking?: boolean; noise?: string } | null;
 };
 
 export type Match = { met: number; total: number; pct: number };
@@ -286,6 +315,8 @@ export type GroupListing = Listing & {
   contested: boolean;     // at least one thumbs-down, but fewer than half the flock
   removed: boolean;       // thumbs-down reached half the flock, rounded up: off the active list, not suggested again
   match: Match;           // "Matches 3 of 4 group prefs" / "92% group match"
+  pinAvgMi?: number | null; // Compare only: average straight-line miles from the flock's commute pins (null = nobody has a pin)
+  pinMaxMi?: number | null; // ... and the farthest pin
 };
 
 export type FeedPost = { id: string; user: Profile; listing: GroupListing; swipedAt: string };
@@ -573,6 +604,22 @@ export function subscribeToMessages(onMessage: (m: Message) => void): () => void
     .on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${CURRENT_USER_ID}` },
       (payload) => onMessage(payload.new as Message))
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+// ---------- Flock chat: one group conversation per flock (migration 0021) ----------
+export type FlockMessage = { id: string; flock_id: string; sender_id: string | null; body: string; created_at: string };
+export async function getFlockMessages(): Promise<FlockMessage[]> {
+  return check(await supabase.from('flock_messages').select('*').eq('flock_id', GROUP_ID).order('created_at')) as FlockMessage[];
+}
+export async function sendFlockMessage(body: string): Promise<FlockMessage> {
+  return check(await supabase.from('flock_messages').insert({ flock_id: GROUP_ID, sender_id: CURRENT_USER_ID, body }).select().single()) as FlockMessage;
+}
+// Calls onMessage for every new message in the current flock's chat, yours included. Returns an unsubscribe function.
+export function subscribeToFlockMessages(onMessage: (m: FlockMessage) => void): () => void {
+  const channel = supabase
+    .channel(`flock-chat:${GROUP_ID}:${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'flock_messages', filter: `flock_id=eq.${GROUP_ID}` }, (payload) => onMessage(payload.new as FlockMessage))
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

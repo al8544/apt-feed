@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import { CURRENT_USER_ID, askDucktect, getMapListings, getMySwipes, getStash, storedFlockId, type DucktectResult, type DucktectViewport, type GroupListing } from '@/lib/api';
+import { CURRENT_USER_ID, askDucktect, getFlockPins, getMapListings, getMySwipes, getStash, storedFlockId, type DucktectResult, type DucktectViewport, type FlockPin, type GroupListing } from '@/lib/api';
+import Avatar from '@/components/Avatar';
+import { cluster, type Cluster } from '@/lib/cluster';
 import PricePill from '@/components/PricePill';
 import ListingCard from '@/components/ListingCard';
 import Icon from '@/components/Icon';
@@ -29,6 +31,8 @@ export default function MapPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [me, setMe] = useState<LatLng | null>(null);
+  const [zoom, setZoom] = useState(11);
+  const [flockPins, setFlockPins] = useState<FlockPin[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export default function MapPage() {
       .then(setAll)
       .catch((e) => (setError(e.message), setAll([])));
     getMySwipes().then(setSwipes).catch(() => {});
+    getFlockPins().then(setFlockPins).catch(() => {}); // flockmates' commute pins
     getStash().then((ls) => setStashed(new Set(ls.map((l) => l.id)))).catch(() => {});
   }, []);
 
@@ -77,6 +82,8 @@ export default function MapPage() {
 
   const result: DucktectResult | null = ducktect?.result ?? null;
   const ranks = new globalThis.Map((result?.picks ?? []).map((p) => [p.communityId ?? p.floorPlanId, p.rank] as const));
+  // Zoomed out, nearby places merge into one numbered bubble (like Redfin); the selected place and Ducktect picks always stay on their own.
+  const groups = cluster(listings, zoom, (l) => l.id === selectedId || ranks.has(l.community_id ?? l.id));
   // A pick can sit on a place your filters hide from the list; it still gets its pin.
   const extraPicks = (result?.picks ?? []).filter((p) => !listings.some((l) => l.community_id === p.communityId) && p.lat != null && p.lng != null);
 
@@ -90,9 +97,12 @@ export default function MapPage() {
           disableDefaultUI
           gestureHandling="greedy"
           onClick={() => setSelectedId(null)}
+          onCameraChanged={(e) => setZoom(Math.round(e.detail.zoom))}
           className="size-full"
         >
-          {listings.map((l) => {
+          {groups.map((g) => {
+            if (g.items.length > 1) return <ClusterMarker key={`c:${g.items[0]!.id}:${g.items.length}`} group={g} />;
+            const l = g.items[0]!;
             const rank = ranks.get(l.community_id ?? l.id);
             return (
               <AdvancedMarker
@@ -118,6 +128,14 @@ export default function MapPage() {
             </AdvancedMarker>
           ))}
           <DucktectMapEffects result={result} />
+          {flockPins.map((p) => (
+            <AdvancedMarker key={p.user.id} position={{ lat: p.lat, lng: p.lng }} zIndex={2} title={`${p.user.display_name}${p.label ? ` · ${p.label}` : ''}`}>
+              <div className="flex flex-col items-center">
+                <Avatar user={p.user} size={34} className="border-2 border-card" />
+                <span className="mt-0.5 max-w-[110px] truncate rounded bg-card px-1.5 text-xs font-bold text-ink">{p.label ?? p.user.display_name.split(' ')[0]}</span>
+              </div>
+            </AdvancedMarker>
+          ))}
           {me && (
             <AdvancedMarker position={me} zIndex={0}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -242,6 +260,25 @@ function DucktectMapEffects({ result }: { result: DucktectResult | null }) {
     if (!b.isEmpty()) map.fitBounds(b, { top: 150, bottom: Math.round(window.innerHeight * 0.6), left: 40, right: 40 });
   }, [map, result]);
   return null;
+}
+
+// A bubble with the number of places in the area; green when someone in the flock liked one of them. Tap to zoom in.
+function ClusterMarker({ group }: { group: Cluster<GroupListing> }) {
+  const map = useMap();
+  const n = group.items.length;
+  const liked = group.items.some((l) => l.likes > 0);
+  const size = Math.min(56, 30 + String(n).length * 8 + Math.log2(n) * 2);
+  return (
+    <AdvancedMarker position={group} zIndex={3} onClick={() => map && (map.panTo(group), map.setZoom(Math.min((map.getZoom() ?? 11) + 2, 17)))}>
+      <div
+        aria-label={`${n} places here`}
+        style={{ width: size, height: size }}
+        className={`flex cursor-pointer items-center justify-center rounded-full border-2 border-card text-[15px] font-bold ${liked ? 'bg-accent text-card' : 'bg-ink text-card'}`}
+      >
+        {n}
+      </div>
+    </AdvancedMarker>
+  );
 }
 
 function LocateButton({ onLocated }: { onLocated: (p: LatLng) => void }) {

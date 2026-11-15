@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CURRENT_USER_ID, getGroupMembers, getMapListings, type GroupListing } from '@/lib/api';
-import { money, area } from '@/lib/format';
+import { CURRENT_USER_ID, getFlockPins, getGroupMembers, getMapListings, type FlockPin, type GroupListing } from '@/lib/api';
+import { money, area, miles, milesBetween } from '@/lib/format';
 import {
   METRICS,
   evenWeights,
@@ -53,6 +53,7 @@ export default function ComparePage() {
   const ids = useMemo(() => (params.get('ids') ?? '').split(',').filter(Boolean), [params]);
   const [all, setAll] = useState<GroupListing[] | null>(null);
   const [groupSize, setGroupSize] = useState(0);
+  const [pins, setPins] = useState<FlockPin[]>([]);
   const [prefs, setPrefsState] = useState<Prefs>(loadPrefs);
   const [highlight, setHighlight] = useState(true);
   const [diffOnly, setDiffOnly] = useState(false);
@@ -65,10 +66,18 @@ export default function ComparePage() {
       .then(setAll)
       .catch((e) => (setError(e.message), setAll([])));
     getGroupMembers().then((m) => setGroupSize(m.length)).catch(() => {});
+    getFlockPins().then(setPins).catch(() => {});
   }, []);
 
   const setPrefs = (p: Prefs) => (setPrefsState(p), savePrefs(p));
-  const places = ids.map((id) => all?.find((l) => l.id === id)).filter((l): l is GroupListing => !!l);
+  // Distance to the flock's commute pins, worked out here from the pins flockmates share (migration 0019).
+  const places = ids
+    .map((id) => all?.find((l) => l.id === id))
+    .filter((l): l is GroupListing => !!l)
+    .map((l) => {
+      const d = pins.map((p) => milesBetween(p, l));
+      return { ...l, pinAvgMi: d.length ? d.reduce((a, b) => a + b, 0) / d.length : null, pinMaxMi: d.length ? Math.max(...d) : null };
+    });
   const scores = yourScores(places, prefs.weights, groupSize);
   const flockRank = [...places].sort((a, b) => flockScore(b, groupSize) - flockScore(a, groupSize)).map((l) => l.id);
   const order = places.map((l, i) => ({ l, score: scores[i]! }));
@@ -259,6 +268,12 @@ function Cell({
       break;
     case 'ppsf':
       content = l.sqft ? `$${(l.price / l.sqft).toFixed(2)}` : '–';
+      break;
+    case 'distAvg':
+      content = l.pinAvgMi != null ? miles(l.pinAvgMi) : '–';
+      break;
+    case 'distMax':
+      content = l.pinMaxMi != null ? miles(l.pinMaxMi) : '–';
       break;
     case 'flockScore':
       content = flockScore(l, groupSize);

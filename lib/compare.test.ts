@@ -5,13 +5,13 @@ import { evenWeights, flockScore, removalAt, setWeight, toggleWeight, voteState,
 import type { GroupListing } from './api.ts';
 
 const sum = (w: object) => Object.values(w).reduce((a: number, b) => a + (b as number), 0);
-const keys: MetricKey[] = ['rent', 'bedBath', 'sqft', 'ppsf', 'flockScore', 'votes', 'pets'];
+const keys: MetricKey[] = ['rent', 'bedBath', 'sqft', 'ppsf', 'distAvg', 'distMax', 'flockScore', 'votes', 'pets'];
 
 test('dragging one slider keeps the total at 1 and splits the rest proportionally', () => {
   const w = setWeight(evenWeights(keys), 'rent', 0.28);
   assert.ok(Math.abs(sum(w) - 1) < 1e-9);
   assert.equal(w.rent, 0.28);
-  assert.ok(Math.abs(w.sqft! - 0.72 / 6) < 1e-9);
+  assert.ok(Math.abs(w.sqft! - 0.72 / 8) < 1e-9);
 });
 
 test('when every other slider is at 0, the remainder is split evenly', () => {
@@ -21,10 +21,10 @@ test('when every other slider is at 0, the remainder is split evenly', () => {
 
 test('toggling metrics on and off renormalizes', () => {
   const off = toggleWeight(evenWeights(keys), 'pets', false);
-  assert.equal(Object.keys(off).length, 6);
+  assert.equal(Object.keys(off).length, 8);
   assert.ok(Math.abs(sum(off) - 1) < 1e-9);
   const on = toggleWeight(off, 'pets', true);
-  assert.ok(Math.abs(on.pets! - 1 / 7) < 1e-9 && Math.abs(sum(on) - 1) < 1e-9);
+  assert.ok(Math.abs(on.pets! - 1 / 9) < 1e-9 && Math.abs(sum(on) - 1) < 1e-9);
 });
 
 test('cheaper place scores higher on rent; ties score 50', () => {
@@ -32,6 +32,14 @@ test('cheaper place scores higher on rent; ties score 50', () => {
     ({ id, price, beds: 2, baths: 1, sqft: 900, pets: true, likes: 1, match: { met: 2, total: 4, pct: 50 } }) as GroupListing;
   assert.deepEqual(yourScores([l('a', 3000), l('b', 4000)], { rent: 1 }, 4), [100, 0]);
   assert.deepEqual(yourScores([l('a', 3000), l('b', 3000)], { rent: 1 }, 4), [50, 50]);
+});
+
+test('the closer place scores higher on distance; a place with no pin data ranks last and never makes a NaN', () => {
+  const l = (id: string, pinAvgMi: number | null) =>
+    ({ id, price: 3000, beds: 2, baths: 1, sqft: 900, pets: true, likes: 1, pinAvgMi, match: { met: 2, total: 4, pct: 50 } }) as GroupListing;
+  assert.deepEqual(yourScores([l('near', 2), l('far', 8)], { distAvg: 1 }, 4), [100, 0]);
+  assert.deepEqual(yourScores([l('near', 2), l('unknown', null)], { distAvg: 1 }, 4), [100, 0]);
+  assert.deepEqual(yourScores([l('a', null), l('b', null)], { distAvg: 1 }, 4), [50, 50]); // nobody set a pin: no one is favored
 });
 
 // ---- thumbs voting and the flock score (ticket T8, docs/DESIGN.md §7.3) ----

@@ -14,7 +14,10 @@ import {
   type Member,
   type Profile,
   FLOCK_NAME,
+  getFlockPins,
+  getJoinRequestCount,
   getMyPin,
+  type FlockPin,
   type Pin,
 } from '@/lib/api';
 import { groupPrefs, listSummary, money, parseDateOnly } from '@/lib/format';
@@ -25,6 +28,9 @@ import Toggle from '@/components/Toggle';
 import PinSheet from '@/components/PinSheet';
 import PreferencesSheet from '@/components/PreferencesSheet';
 import MessageSheet from '@/components/MessageSheet';
+import MemberSheet from '@/components/MemberSheet';
+import FlockChatSheet from '@/components/FlockChatSheet';
+import FlockPinsMap from '@/components/FlockPinsMap';
 import { flockScore as score } from '@/lib/compare';
 import RankingRow from '@/components/RankingRow';
 import SmallerFlockPrompt from '@/components/SmallerFlockPrompt';
@@ -40,11 +46,16 @@ export default function GroupPage() {
   const [pin, setPin] = useState<Pin | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [chatWith, setChatWith] = useState<Member | null>(null);
+  const [viewing, setViewing] = useState<Member | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [pins, setPins] = useState<FlockPin[]>([]);
+  const [waiting, setWaiting] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     getMyPin().then(setPin).catch(() => {});
+    getFlockPins().then(setPins).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -53,6 +64,7 @@ export default function GroupPage() {
     getMapListings().then(setListings).catch((e) => (fail(e), setListings([])));
     getProfile().then(setMe).catch(fail);
     getFlockOpen().then(setOpen).catch(fail);
+    getJoinRequestCount().then(setWaiting).catch(() => {});
 
     // Live: when anyone in the flock votes, refresh the rankings and the member counts without a reload.
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -163,6 +175,18 @@ export default function GroupPage() {
         )}
       </div>
 
+      {waiting > 0 && me && members?.find((m) => m.id === me.id)?.role === 'admin' && (
+        <Link href="/requests" className="flex items-center gap-3 px-4 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[21px] font-bold text-ink">Join requests</p>
+            <p className="text-[15px] text-muted">{waiting === 1 ? '1 person wants' : `${waiting} people want`} to join</p>
+          </div>
+          <span className="flex size-[26px] items-center justify-center rounded-full bg-accent text-base font-bold text-card">{waiting}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/chevron.svg" alt="" width={20} height={20} />
+        </Link>
+      )}
+
       {error && <p className="px-4 pt-3 text-[15px] text-danger">{error}</p>}
 
       <SectionHeader
@@ -221,8 +245,22 @@ export default function GroupPage() {
               </div>
             </div>
           ))
-        : members.map((m) => (
+        : [
+            <div key="flock-chat" className="flex items-center gap-3 px-4 py-2">
+              <div className="flex w-11 shrink-0 justify-center">
+                {members.slice(0, 3).map((m) => <Avatar key={m.id} user={m} size={26} className="-mr-2.5 border-2 border-card last:mr-0" />)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[21px] font-bold text-ink">Flock chat</p>
+                <p className="truncate text-lg text-muted">Everyone in the flock</p>
+              </div>
+              <button onClick={() => setChatOpen(true)} className="rough rounded-lg px-3.5 py-[7px] text-lg font-bold text-ink [--fill:var(--color-surface)]">
+                Chat
+              </button>
+            </div>,
+            ...members.map((m) => (
             <div key={m.id} className="flex items-center gap-3 px-4 py-2">
+              <button onClick={() => setViewing(m)} aria-label={`${m.display_name}'s details`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
               <Avatar user={m} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[21px] font-bold text-ink">
@@ -234,6 +272,7 @@ export default function GroupPage() {
                   {m.role === 'admin' && ' · admin'} · {m.swipeCount} {m.swipeCount === 1 ? 'like' : 'likes'}
                 </p>
               </div>
+              </button>
               {m.id !== CURRENT_USER_ID && (
                 <button
                   onClick={() => setChatWith(m)}
@@ -243,7 +282,17 @@ export default function GroupPage() {
                 </button>
               )}
             </div>
-          ))}
+            )),
+          ]}
+
+      <SectionHeader title="Commute pins" action={pin ? 'Edit mine' : 'Set mine'} onAction={() => setPinOpen(true)} />
+      {pins.length ? (
+        <FlockPinsMap pins={pins} />
+      ) : (
+        <p className="rough mx-4 rounded-[7px] p-4 text-center text-base text-muted [--fill:var(--color-surface)]">
+          No one has set a commute pin yet. Drop yours so the flock can see where you travel to most.
+        </p>
+      )}
 
       <SectionHeader title="Flock preferences" action="Edit" onAction={() => setPrefsOpen(true)} />
       {prefs ? (
@@ -274,8 +323,10 @@ export default function GroupPage() {
           getMapListings().then(setListings).catch(() => {});
         }}
       />
-      <PinSheet open={pinOpen} onClose={() => setPinOpen(false)} onSaved={setPin} />
+      <PinSheet open={pinOpen} onClose={() => setPinOpen(false)} onSaved={(p) => (setPin(p), getFlockPins().then(setPins).catch(() => {}))} />
       <MessageSheet member={chatWith} onClose={() => setChatWith(null)} />
+      <FlockChatSheet open={chatOpen} members={members ?? []} onClose={() => setChatOpen(false)} />
+      <MemberSheet member={viewing} pin={pins.find((p) => p.user.id === viewing?.id) ?? null} onClose={() => setViewing(null)} />
 
       <AnimatePresence>
         {toast && (

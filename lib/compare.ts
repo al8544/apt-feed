@@ -16,15 +16,17 @@ export function voteState(down: number, groupSize: number): { removed: boolean; 
   return { removed, contested: down > 0 && !removed };
 }
 
-export type MetricKey = 'rent' | 'bedBath' | 'sqft' | 'ppsf' | 'flockScore' | 'votes' | 'pets';
+export type MetricKey = 'rent' | 'bedBath' | 'sqft' | 'ppsf' | 'distAvg' | 'distMax' | 'flockScore' | 'votes' | 'pets';
 
-// Only metrics the listing data has. Commute, laundry, move-in, lease length and broker fee
+// Only metrics we have data for. Distance comes from the flock's commute pins (set on the Flock tab). Laundry, move-in, lease length and broker fee
 // from the design need new listing fields first.
 export const METRICS: { key: MetricKey; label: string; lowerIsBetter?: boolean }[] = [
   { key: 'rent', label: 'Rent', lowerIsBetter: true },
   { key: 'bedBath', label: 'Bed / bath' },
   { key: 'sqft', label: 'Sq ft' },
   { key: 'ppsf', label: '$ / sq ft', lowerIsBetter: true },
+  { key: 'distAvg', label: 'Avg distance', lowerIsBetter: true },
+  { key: 'distMax', label: 'Farthest pin', lowerIsBetter: true },
   { key: 'flockScore', label: 'Flock score' },
   { key: 'votes', label: 'Flock votes' },
   { key: 'pets', label: 'Pets' },
@@ -40,6 +42,10 @@ export function metricValue(key: MetricKey, l: GroupListing, groupSize: number):
       return l.sqft ?? 0; // unknown size ranks last; shown as a dash
     case 'ppsf':
       return l.sqft ? l.price / l.sqft : Infinity;
+    case 'distAvg':
+      return l.pinAvgMi ?? Infinity; // no pins set: unknown ranks last, shown as a dash
+    case 'distMax':
+      return l.pinMaxMi ?? Infinity;
     case 'flockScore':
       return flockScore(l, groupSize);
     case 'votes':
@@ -85,9 +91,12 @@ export function toggleWeight(w: Weights, k: MetricKey, on: boolean): Weights {
 // Min-max normalize each metric across the places being compared (0..1, 1 = best). All tied → 0.5.
 export function normalized(key: MetricKey, places: GroupListing[], groupSize: number, lowerIsBetter = false) {
   const vals = places.map((l) => metricValue(key, l, groupSize));
-  const lo = Math.min(...vals);
-  const hi = Math.max(...vals);
-  return vals.map((v) => (hi === lo ? 0.5 : lowerIsBetter ? (hi - v) / (hi - lo) : (v - lo) / (hi - lo)));
+  const known = vals.filter(Number.isFinite); // an unknown value (Infinity) is ranked last, not allowed to turn the math into NaN
+  if (!known.length) return vals.map(() => 0.5);
+  const lo = Math.min(...known);
+  const hi = Math.max(...known);
+  const tie = known.length === vals.length ? 0.5 : 1; // everyone tied: 0.5; the known ones tied while others are unknown: they beat the unknowns
+  return vals.map((v) => (!Number.isFinite(v) ? 0 : hi === lo ? tie : lowerIsBetter ? (hi - v) / (hi - lo) : (v - lo) / (hi - lo)));
 }
 
 // Your score per place: round(100 · Σ wᵢ · normᵢ).
