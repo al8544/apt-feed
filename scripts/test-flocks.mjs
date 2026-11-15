@@ -77,7 +77,7 @@ try {
   check((await join(b, friends)).data === 'already_member', 'joining twice is harmless');
 
   const rules = await make(a, { p_name: 'rules', p_kind: 'open', p_open_to_join: true, p_join_rules: { budget: true }, p_filters: { budget_min: 3000 } });
-  check((await join(c, rules)).data === 'mismatch', 'a budget that fails the owner\'s rule cannot send a request');
+  check((await join(c, rules)).data === 'requested', 'a budget that fails the owner\'s rule can still send a request');
   check((await join(b, rules)).data === 'requested', 'a budget that passes sends a request, not a membership');
   check((await b.db.rpc('answer_join_request', { p_flock_id: rules, p_user_id: b.id, p_approve: true })).error?.code === '42501', 'only an admin can approve a request');
   check((await a.db.rpc('answer_join_request', { p_flock_id: rules, p_user_id: b.id, p_approve: true })).data === 'approved', 'an admin approves the request and the person becomes a member');

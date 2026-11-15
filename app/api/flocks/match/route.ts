@@ -9,7 +9,7 @@ const DAILY_LIMIT = Number(process.env.AGENT_DAILY_LIMIT ?? 60);
 const MAX_FLOCKS = 15;
 
 // POST /api/flocks/match: the agent reads what the caller wrote (about, looking_for, dealbreakers_text) and the public text of
-// every open flock they already pass the hard rules for, and answers { matches: [{ flockId, fit, reason }] }, best fit first.
+// every open flock (best rule match first, up to MAX_FLOCKS), and answers { matches: [{ flockId, fit, reason }] } with one entry per flock sent.
 // It only recommends: applying is still the person sending a request to the flock (POST /api/flocks/[id]/join), which an admin approves.
 export async function POST(request: Request) {
   const caller = await requireUser(request);
@@ -25,9 +25,8 @@ export async function POST(request: Request) {
 
   const found = await discover(caller.user.id);
   if ('error' in found) return Response.json({ error: found.error }, { status: found.status });
-  // Hard rules first, in code, and only flocks with a seat left (join_flock answers 'full' otherwise): the model never sees the rest.
-  const open = (f: (typeof found.flocks)[number]) => f.passes && (f.maxSize == null || f.members.length < f.maxSize);
-  const candidates = found.flocks.filter(open).slice(0, MAX_FLOCKS);
+  // Every flock is read, full or failing a hard rule: the page scales each flock's % by its read and shows no flock without one.
+  const candidates = found.flocks.slice(0, MAX_FLOCKS);
   if (!candidates.length) return Response.json({ matches: [] });
 
   const allowed = await caller.db.rpc('take_agent_call', { p_daily_limit: DAILY_LIMIT });

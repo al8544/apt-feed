@@ -1,14 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getFlockProfile, joinFlock, selectFlock, type DiscoveredFlock } from '@/lib/api';
+import { flockPct, flockRead, getFlockProfile, joinFlock, peekFlock, selectFlock, type DiscoveredFlock } from '@/lib/api';
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/AuthUI';
 import { StepHeader, screen } from '@/components/FormUI';
 
 const RESULT: Record<string, string> = {
   requested: 'Request sent. An admin will answer it.',
-  mismatch: "You don't fit this flock's rules, so you can't send a request.",
   full: 'This flock is full.',
   closed: 'This flock is not taking new people.',
 };
@@ -17,7 +16,7 @@ const RESULT: Record<string, string> = {
 export default function FlockProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [flock, setFlock] = useState<DiscoveredFlock | null | undefined>(undefined);
+  const [flock, setFlock] = useState<DiscoveredFlock | null | undefined>(() => peekFlock(id)); // from Find a flock: opens at once, then refreshes
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -51,6 +50,8 @@ export default function FlockProfilePage() {
     );
 
   const free = flock.maxSize ? Math.max(0, flock.maxSize - flock.members.length) : 0;
+  const full = !!flock.maxSize && free === 0;
+  const read = flockRead(flock.id);
   return (
     <main className={screen}>
       <StepHeader back="/flocks/find" />
@@ -74,9 +75,10 @@ export default function FlockProfilePage() {
       </div>
 
       <div className={`rough rounded-lg px-4 py-3 ${flock.passes ? '[--fill:var(--color-accent-soft)]' : '[--fill:var(--color-surface)]'}`}>
-        <p className={`text-[28px] font-bold ${flock.passes ? 'text-accent' : 'text-ink'}`}>{flock.matchPct}% match</p>
+        <p className={`text-[28px] font-bold ${flock.passes ? 'text-accent' : 'text-ink'}`}>{flockPct(flock)}% match</p>
         <p className="text-[17px] text-ink">
-          {flock.passes ? 'You fit every rule. Send a request to join.' : "You don't fit every rule, so you can't send a request."}
+          {read?.reason ?? (flock.passes ? 'You fit every rule.' : "You don't fit every rule.")}{' '}
+          {full ? 'This flock is full.' : 'You can still send a request: an admin decides.'}
         </p>
       </div>
 
@@ -115,7 +117,7 @@ export default function FlockProfilePage() {
         </p>
       )}
       <div className="flex-1" />
-      <Button onClick={join} disabled={busy || !!note || !flock.passes}>
+      <Button onClick={join} disabled={busy || !!note || full}>
         {busy ? 'Sending…' : 'Request to join'}
       </Button>
       <p className="text-center text-[15px] text-muted">You can leave any time</p>

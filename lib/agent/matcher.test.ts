@@ -25,7 +25,7 @@ test('missing text is said out loud, not left blank', () => {
   assert.ok(buildPrompt({ about: null, lookingFor: '  ', dealbreakers: null }, [flock(1, { about: null })]).includes('(nothing written)'));
 });
 
-test('ids the model invented or repeated are dropped; best fit first, ties in the order we sent', async () => {
+test('ids the model invented or repeated are dropped; every flock we sent comes back, in the order we sent', async () => {
   const out = await analyzeFlocks(me, [flock(1), flock(2), flock(3)], says([
     { flockId: F(3), fit: 'possible', reason: 'c' },
     { flockId: F(9), fit: 'strong', reason: 'not a flock we sent' },
@@ -33,7 +33,15 @@ test('ids the model invented or repeated are dropped; best fit first, ties in th
     { flockId: F(2), fit: 'weak', reason: 'b again' },
     { flockId: F(1), fit: 'possible', reason: 'a' },
   ]));
-  assert.deepEqual(out.map((m) => [m.flockId, m.fit]), [[F(2), 'strong'], [F(1), 'possible'], [F(3), 'possible']]);
+  assert.deepEqual(out.map((m) => [m.flockId, m.fit]), [[F(1), 'possible'], [F(2), 'strong'], [F(3), 'possible']]);
+});
+
+test('a flock the model skips is asked about again, then gets a plain fallback so nothing goes unscored', async () => {
+  const asked: number[] = [];
+  const answers = [[{ flockId: F(1), fit: 'weak' as const, reason: 'a' }], [{ flockId: F(2), fit: 'strong' as const, reason: 'b' }]];
+  const out = await analyzeFlocks(me, [flock(1), flock(2), flock(3)], async (_s, p) => ((asked.push(p.match(/<flock /g)!.length)), { matches: answers.shift() ?? [] }));
+  assert.deepEqual(asked, [3, 2]); // the retry carries only the two it missed
+  assert.deepEqual(out.map((m) => [m.flockId, m.fit]), [[F(1), 'weak'], [F(2), 'strong'], [F(3), 'possible']]);
 });
 
 test('a rent or percentage the model made up is replaced; one the person wrote is kept', async () => {

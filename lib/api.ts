@@ -156,8 +156,14 @@ export type DiscoveredFlock = {
   createdAt: string;
 };
 
+// Flocks Find a flock already loaded, so a flock's page can open at once and refresh behind it.
+const seenFlocks = new Map<string, DiscoveredFlock>();
+export const peekFlock = (id: string) => seenFlocks.get(id);
+
 export async function discoverFlocks(): Promise<DiscoveredFlock[]> {
-  return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch('/api/flocks/discover'))).flocks;
+  const flocks = (await json<{ flocks: DiscoveredFlock[] }>(await authFetch('/api/flocks/discover'))).flocks;
+  flocks.forEach((f) => seenFlocks.set(f.id, f));
+  return flocks;
 }
 
 // The agent reads what you wrote and each open flock's text, for the flocks you already pass the rules for. Best fit first.
@@ -165,8 +171,17 @@ export async function discoverFlocks(): Promise<DiscoveredFlock[]> {
 export type FlockMatch = { flockId: string; fit: 'strong' | 'possible' | 'weak'; reason: string };
 
 export async function getFlockMatches(): Promise<FlockMatch[]> {
-  return (await json<{ matches: FlockMatch[] }>(await authFetch('/api/flocks/match', { method: 'POST' }))).matches;
+  const matches = (await json<{ matches: FlockMatch[] }>(await authFetch('/api/flocks/match', { method: 'POST' }))).matches;
+  matches.forEach((m) => reads.set(m.flockId, m));
+  return matches;
 }
+
+// The % shown everywhere: the rule-based % scaled by the agent's read of what both sides wrote. A clash in words (say, "I hate pets"
+// vs a pet flock) pulls it way down. Before the read arrives it is the rule-based % alone.
+const reads = new Map<string, FlockMatch>();
+const FIT_FACTOR = { strong: 1, possible: 0.75, weak: 0.3 } as const;
+export const flockPct = (f: DiscoveredFlock) => Math.round(f.matchPct * (reads.has(f.id) ? FIT_FACTOR[reads.get(f.id)!.fit] : 1));
+export const flockRead = (id: string) => reads.get(id);
 
 // T15: Ducktect best option (docs/DESIGN.md §8.9). Streams steps, then one `result` the server built from the database and tool output.
 // Read-only: it never writes. Throws the server's message on a refusal (signed out, not in the flock, daily limit).
@@ -186,7 +201,9 @@ export async function askDucktect(
 }
 
 export async function getFlockProfile(flockId: string): Promise<DiscoveredFlock | null> {
-  return (await json<{ flocks: DiscoveredFlock[] }>(await authFetch(`/api/flocks/discover?id=${encodeURIComponent(flockId)}`))).flocks[0] ?? null;
+  const f = (await json<{ flocks: DiscoveredFlock[] }>(await authFetch(`/api/flocks/discover?id=${encodeURIComponent(flockId)}`))).flocks[0] ?? null;
+  if (f) seenFlocks.set(f.id, f);
+  return f;
 }
 
 // 05: the admin's open/closed switch. Open = listed in Find a flock, and people send a request.

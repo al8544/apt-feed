@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { discoverFlocks, getFlockMatches, getProfile, updatePreferences, type DiscoveredFlock, type FlockMatch, type Profile } from '@/lib/api';
+import { discoverFlocks, flockPct, getFlockMatches, getProfile, updatePreferences, type DiscoveredFlock, type FlockMatch, type Profile } from '@/lib/api';
 import { BUDGETS, LA_AREAS } from '@/lib/flocks';
 import { shortPrice } from '@/lib/format';
 import Avatar from '@/components/Avatar';
@@ -13,8 +13,6 @@ type Step = 'basics' | 'story' | 'results';
 // 'loading' while the agent reads, 'failed' when it could not (no key, daily limit, model down): the rule-based list still works.
 type Reading = 'loading' | 'ready' | 'failed';
 
-const FIT = { strong: 'Strong fit', possible: 'Possible fit', weak: 'Weak fit' } as const;
-const FIT_RANK = { strong: 0, possible: 1, weak: 2 } as const;
 
 // Figma 00i Find a flock. You answer a few long questions once; an agent reads them against each open flock you already pass the
 // rules for and says which you could apply to. Applying is still the Join button on the flock's page.
@@ -54,15 +52,13 @@ export default function FindFlockPage() {
   if (me && step === 'story') return <Story me={me} onSaved={saved} />;
 
   const spots = (f: DiscoveredFlock) => (f.maxSize ? f.maxSize - f.members.length : Infinity);
-  // The agent's read comes first (strong to weak); flocks it did not read follow, by rule match.
-  const byAgent = (a: DiscoveredFlock, b: DiscoveredFlock) => {
-    const ra = matches.get(a.id), rb = matches.get(b.id);
-    if (ra && rb) return FIT_RANK[ra.fit] - FIT_RANK[rb.fit] || b.matchPct - a.matchPct;
-    return ra ? -1 : rb ? 1 : b.matchPct - a.matchPct;
-  };
-  const shown = [...(flocks ?? [])]
+  // Same % keeps the same place: ties break on id, so the list never shuffles.
+  const byPct = (a: DiscoveredFlock, b: DiscoveredFlock) => flockPct(b) - flockPct(a) || a.id.localeCompare(b.id);
+  // Nothing is listed until the agent has scored it: while it reads, only the skeleton shows. If it fails, the basics-only list stands in.
+  const scored = reading === 'ready' ? (flocks ?? []).filter((f) => matches.has(f.id)) : reading === 'failed' ? (flocks ?? []) : [];
+  const shown = [...scored]
     .filter((f) => sort !== 'space' || spots(f) > 0)
-    .sort((a, b) => (sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : byAgent(a, b)));
+    .sort((a, b) => (sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : byPct(a, b)));
 
   return (
     <main className={screen}>
@@ -99,7 +95,7 @@ export default function FindFlockPage() {
         <p className="text-base text-muted">Couldn&apos;t read your answers just now, so this list is ranked by your basics only.</p>
       )}
       {error && <p className="text-base text-danger">{error}</p>}
-      {!flocks ? (
+      {!flocks || reading === 'loading' ? (
         [0, 1, 2].map((i) => <div key={i} className="h-[104px] animate-pulse rounded-lg bg-surface" />)
       ) : shown.length === 0 ? (
         <p className="rough rounded-lg p-4 text-center text-lg text-muted [--fill:var(--color-surface)]">No open flocks right now.</p>
@@ -119,8 +115,8 @@ export default function FindFlockPage() {
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
-                <span className={`rounded-[7px] px-2.5 py-[3px] text-sm font-bold ${m ? (m.fit === 'weak' ? 'bg-card text-muted' : 'bg-accent-soft text-accent') : f.passes ? 'bg-accent-soft text-accent' : 'bg-card text-muted'}`}>
-                  {m ? FIT[m.fit] : `${f.matchPct}% match`}
+                <span className={`rounded-[7px] px-2.5 py-[3px] text-sm font-bold ${(m ? m.fit !== 'weak' : true) && f.passes ? 'bg-accent-soft text-accent' : 'bg-card text-muted'}`}>
+                  {flockPct(f)}% match
                 </span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/icons/chevron.svg" alt="" width={20} height={20} />

@@ -42,21 +42,29 @@ const askModel: Analyze = async (system, prompt) => {
   return fitSchema.parse(await model.invoke([{ role: 'system', content: system }, { role: 'user', content: prompt }]));
 };
 
-// Best fit first; flocks the model skipped or invented are dropped. `analyze` is swappable so tests need no API key.
+// Every candidate comes back with a fit, in the order we sent them: ids the model invented or repeated are dropped, flocks it skipped
+// are asked about once more, and any still missing get 'possible' with a plain reason (the page shows a % for every flock it lists).
+// `analyze` is swappable so tests need no API key.
 export async function analyzeFlocks(me: Seeker, candidates: Candidate[], analyze: Analyze = askModel): Promise<Match[]> {
   if (!candidates.length) return [];
+  const first = await readFlocks(me, candidates, analyze);
+  const missing = candidates.filter((c) => !first.has(c.id));
+  const second = missing.length ? await readFlocks(me, missing, analyze) : new Map<string, Match>();
+  return candidates.map(
+    (c) => first.get(c.id) ?? second.get(c.id) ?? { flockId: c.id, fit: 'possible', reason: 'Not enough written to tell yet.' }
+  );
+}
+
+async function readFlocks(me: Seeker, candidates: Candidate[], analyze: Analyze): Promise<Map<string, Match>> {
   const prompt = buildPrompt(me, candidates);
   const { matches } = await analyze(MATCHER_PROMPT, prompt);
 
-  const rank = new Map(candidates.map((c, i) => [c.id, i])); // the order we sent them in (best rule match first) breaks ties
-  const seen = new Set<string>();
-  const kept: Match[] = [];
+  const sent = new Set(candidates.map((c) => c.id));
+  const kept = new Map<string, Match>();
   for (const m of matches) {
-    if (!rank.has(m.flockId) || seen.has(m.flockId)) continue;
-    seen.add(m.flockId);
+    if (!sent.has(m.flockId) || kept.has(m.flockId)) continue;
     const invented = inventedNumbers(m.reason, [prompt]).length > 0; // a rent or percentage nobody gave it
-    kept.push({ flockId: m.flockId, fit: m.fit, reason: invented ? FALLBACK_REASON : m.reason.trim().slice(0, 300) });
+    kept.set(m.flockId, { flockId: m.flockId, fit: m.fit, reason: invented ? FALLBACK_REASON : m.reason.trim().slice(0, 300) });
   }
-  const order = { strong: 0, possible: 1, weak: 2 };
-  return kept.sort((a, b) => order[a.fit] - order[b.fit] || rank.get(a.flockId)! - rank.get(b.flockId)!);
+  return kept;
 }
