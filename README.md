@@ -8,12 +8,12 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 | Command | What you get |
 |---|---|
-| `npm run dev:local` | Local database reset to **in-flock**: sign in as `vinnie@flock.test` / `flock1234`, already in a flock with 4 friends (`maya@`, `jordan@`, `sam@`, `priya@flock.test` work too). |
+| `npm run dev:local` | Local database reset to **in-flock**: sign in as `vinnie@flock.test` / `flock1234`, already in a flock with 4 friends (`maya@`, `jordan@`, `sam@`, `priya@flock.test` work too). Vinnie is admin of the open flock and `alex@flock.test` has a pending request to join. |
 | `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then start a friends flock or join one of 3 seeded open flocks. |
 | `npm run db:seed` / `npm run db:seed -- new-user` | Same reset, without starting the app. |
 | `npm run dev` | The app against the **real** project (`.env.local`). No reset. |
 
-Both `dev:local` commands first wipe all accounts, flocks, swipes, stash and tours in the local database and keep the listings. They need `supabase start` running (setup below, details in `docs/LOCAL_DATABASE.md`).
+Both `dev:local` commands open http://localhost:3000 in your browser once the app is ready, and first wipe all accounts, flocks, swipes, stash and tours in the local database and keep the listings. They need `supabase start` running (setup below, details in `docs/LOCAL_DATABASE.md`).
 
 ## Getting Started
 

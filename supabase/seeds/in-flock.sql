@@ -1,13 +1,22 @@
 -- Scenario "in-flock": Vinnie already belongs to "Our Flock" with the crew, mid-hunt. Sign in as vinnie@flock.test (password flock1234);
--- maya@, jordan@, sam@ and priya@flock.test work too. Local only: these are real auth users with a known password.
+-- maya@, jordan@, sam@, priya@ and alex@flock.test work too. Vinnie is the admin of "Our Flock", which is open, and Alex has asked to join it. Local only: these are real auth users with a known password.
 insert into public.profiles (id, username, display_name, avatar_color, bio, budget_max, beds_min, pets, neighborhoods, move_in, discoverable, is_demo) values
   ('00000000-0000-0000-0000-000000000001', 'vinnie.park', 'Vinnie Park', '#14B8A6', 'Hunting a 3 bd in Los Angeles with the crew. Move-in Jan 2027.', 4000, 2, true, '{"Silver Lake","Echo Park","Los Feliz"}', '2027-01-01', true, true);
 
-insert into public.flocks (id, name, created_by) values
-  ('00000000-0000-0000-0000-0000000000a1', 'Our Flock', '00000000-0000-0000-0000-000000000002');
+-- Alex is not in the flock: a pending request, because the flock is open.
+insert into public.profiles (id, username, display_name, avatar_color, bio, budget_max, beds_min, pets, neighborhoods, move_in, discoverable, is_demo) values
+  ('00000000-0000-0000-0000-000000000006', 'alexc', 'Alex Chen', '#10B981', 'Works from home, wants a spare desk nook.', 3600, 2, false, '{"Silver Lake","Koreatown"}', '2027-01-10', true, true);
 
-insert into public.flock_members (flock_id, user_id, role)
-select '00000000-0000-0000-0000-0000000000a1', id, case when username = 'maya.k' then 'admin' else 'member' end
+insert into public.flocks (id, name, created_by, kind, about, looking_for, open_to_join, discoverable, max_size, bedrooms_needed, filters) values
+  ('00000000-0000-0000-0000-0000000000a1', 'Our Flock', '00000000-0000-0000-0000-000000000001', 'open',
+   'Five friends hunting in Silver Lake, Echo Park and Los Feliz. Move-in January.', 'One more tidy, easygoing roommate.', true, true, 6, 5,
+   '{"areas":["Silver Lake","Echo Park","Los Feliz"],"move_in":"2027-01-01"}');
+
+insert into public.flock_members (flock_id, user_id, role, status, joined_via)
+select '00000000-0000-0000-0000-0000000000a1', id,
+       case when username = 'vinnie.park' then 'admin' else 'member' end,
+       case when username = 'alexc' then 'requested' else 'active' end,
+       case when username = 'alexc' then 'request' end
 from public.profiles;
 
 -- The same 8 mid-priced 2+ bd listings every run (stable order by id).
@@ -18,7 +27,7 @@ create temp table demo_pick on commit drop as
 -- Vinnie has not swiped (empty deck); the others have liked a few and passed on one.
 insert into public.swipes (user_id, listing_id, flock_id, direction)
 select p.id, d.id, '00000000-0000-0000-0000-0000000000a1', case when d.n = 8 then 'left' else 'right' end
-from demo_pick d join public.profiles p on p.username <> 'vinnie.park' where d.n <= 3 or d.n = 8;
+from demo_pick d join public.profiles p on p.username not in ('vinnie.park', 'alexc') where d.n <= 3 or d.n = 8;
 
 insert into public.tours (flock_id, listing_id, starts_at, created_by)
 select '00000000-0000-0000-0000-0000000000a1', id, date_trunc('day', now()) + (n || ' days')::interval + interval '18 hours',

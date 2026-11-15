@@ -27,4 +27,13 @@ const dev = spawn('npx', ['next', 'dev', '-p', '3000'], {
     SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY, // server only: Find a flock computes matches with it
   },
 });
+// Open the browser once the server answers (the first compile can take a few seconds).
+const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+const waitThenOpen = async () => {
+  for (let i = 0; i < 120; i++) {
+    if (await fetch('http://localhost:3000/welcome').then(() => true, () => false)) return spawn(opener, ['http://localhost:3000'], { stdio: 'ignore', detached: true }).unref();
+    await new Promise((r) => setTimeout(r, 500));
+  }
+};
+waitThenOpen();
 dev.on('exit', (code) => process.exit(code ?? 0));

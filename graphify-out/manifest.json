@@ -402,9 +402,9 @@
     "semantic_hash": "d01da6d9df91f78815c497e4237dda96"
   },
   "README.md": {
-    "mtime": 1794703920.3549054,
-    "seen": 1794703941.237439,
-    "ast_hash": "b2b265dd9de29ff72c6166b7b18c45a7",
+    "mtime": 1794705272.6219115,
+    "seen": 1794705288.003389,
+    "ast_hash": "ba41cc15e734e86547d07b9985555241",
     "semantic_hash": ""
   },
   "docs/DESIGN.md": {
@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "scripts/dev-local.mjs": {
-    "mtime": 1794703920.3541129,
-    "seen": 1794703941.2374232,
-    "ast_hash": "fe08291c6d200a18ef96e0f934a456a7",
+    "mtime": 1794705267.5104694,
+    "seen": 1794705288.0031328,
+    "ast_hash": "9ea38fcc6f157b88ee73be62f8288fa6",
     "semantic_hash": ""
   },
   "scripts/enrich-apartments-com.ts": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "docs/LOCAL_DATABASE.md": {
-    "mtime": 1794703920.3554819,
-    "seen": 1794703941.237441,
-    "ast_hash": "e58e147c088000e4430c591383e226bf",
+    "mtime": 1794705267.51122,
+    "seen": 1794705288.003405,
+    "ast_hash": "40b2982194367071f869a733a4872097",
     "semantic_hash": ""
   },
   "docs/permissions/apartments-com.md": {
