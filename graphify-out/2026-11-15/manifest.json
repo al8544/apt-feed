@@ -1433,6 +1433,12 @@
     "ast_hash": "f7260ad4590bbe2dcb40846ed565f9d5",
     "semantic_hash": ""
   },
+  "docs/DEMO_SCRIPT.md": {
+    "mtime": 1794720401.4808912,
+    "seen": 1794720408.7473412,
+    "ast_hash": "90af52c497bc61685e4a1ae1ea349a9f",
+    "semantic_hash": ""
+  },
   "package-lock.json": {
     "mtime": 1794713208.9373155,
     "seen": 1794713590.3659232,

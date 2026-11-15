@@ -38,7 +38,7 @@ npm run dev:local
 
 Your browser opens http://localhost:3000. Sign in as **`vinnie@flock.test`** / **`flock1234`** (already in a flock with 4 friends), or press Sign up and make a new account. Each run resets the demo accounts and flocks (listings stay).
 
-To start as a brand-new user instead (no accounts, sign up and join one of 3 seeded flocks): `npm run dev:local -- new-user`.
+To start as a brand-new user instead (no accounts, sign up and join one of 3 seeded flocks): `npm run dev:new-user`.
 
 Stop the database when you're done: `npx supabase stop`.
 
@@ -47,7 +47,7 @@ Stop the database when you're done: `npx supabase stop`.
 | Command | What you get |
 |---|---|
 | `npm run dev:local` | Local database reset to **in-flock**: sign in as `vinnie@flock.test` / `flock1234`, already in a flock with 4 friends (`maya@`, `jordan@`, `sam@`, `priya@flock.test` work too). Vinnie is admin of the open flock and `alex@flock.test` has a pending request to join. |
-| `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then make a friends flock or join one of 3 seeded open flocks. |
+| `npm run dev:new-user` | Local database reset to **new-user**: no accounts. Sign up, then make a friends flock or join one of 3 seeded open flocks. |
 | `npm run db:seed` / `npm run db:seed -- new-user` | Same reset, without starting the app. |
 | `npm run dev` | The app against the **real** project (`.env.local`). No reset. |
 

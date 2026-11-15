@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "setup": "node scripts/setup-local.mjs",
-    "db:ingest": "node scripts/ingest-local.mjs"
+    "db:ingest": "node scripts/ingest-local.mjs",
+    "dev:new-user": "node scripts/dev-local.mjs new-user"
   },
   "dependencies": {
     "@langchain/core": "^1.4.1",

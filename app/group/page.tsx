@@ -16,7 +16,11 @@ import {
   FLOCK_NAME,
   getFlockPins,
   getJoinRequestCount,
+  getMyFlocks,
   getMyPin,
+  selectFlock,
+  GROUP_ID,
+  type FlockSummary,
   type FlockPin,
   type Pin,
 } from '@/lib/api';
@@ -52,6 +56,7 @@ export default function GroupPage() {
   const [waiting, setWaiting] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean | null>(null);
+  const [flocks, setFlocks] = useState<FlockSummary[] | null>(null); // null = menu closed
 
   useEffect(() => {
     getMyPin().then(setPin).catch(() => {});
@@ -118,9 +123,35 @@ export default function GroupPage() {
     <main className="min-h-dvh bg-card pb-4">
       <SmallerFlockPrompt />
       <header className="flex items-center gap-1 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
-        <h1 className="text-[26px] font-bold text-ink">{FLOCK_NAME}</h1>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/down.svg" alt="" width={18} height={18} />
+        <div className="relative">
+          <button
+            onClick={() => (flocks ? setFlocks(null) : getMyFlocks().then(setFlocks).catch(() => setFlocks([])))}
+            aria-label="Switch flock"
+            aria-expanded={!!flocks}
+            className="flex items-center gap-1">
+            <h1 className="text-[26px] font-bold text-ink">{FLOCK_NAME}</h1>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/down.svg" alt="" width={18} height={18} className={flocks ? 'rotate-180' : ''} />
+          </button>
+          {flocks && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setFlocks(null)} />
+              <div className="rough absolute left-0 top-full z-20 mt-2 flex w-64 flex-col rounded-lg py-1 [--fill:var(--color-surface)]">
+                {flocks.filter((f) => f.id !== GROUP_ID).map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => { selectFlock(f.id); window.location.reload(); }} // reload so every screen refetches for the new flock
+                    className="truncate px-4 py-2.5 text-left text-lg text-ink">
+                    {f.name}
+                  </button>
+                ))}
+                <Link href="/flocks/new" className="px-4 py-2.5 text-lg font-bold text-accent">
+                  + Create a new flock
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex-1" />
         <Link href="/account" aria-label="My account" className="rounded-full border-2 border-line">
           {me ? <Avatar user={me} size={30} /> : <div className="size-[30px] animate-pulse rounded-full bg-surface" />}
