@@ -8,6 +8,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 You need **Docker Desktop** (open and running), **Node 22+**, and `unzip`. Everything runs locally; nothing touches our real database.
 
+**0. Install the tools** (skip if you already have Docker Desktop, Node 22+ and `unzip`):
+
+- **macOS / Linux:** `./bootstrap.sh` installs whatever is missing (macOS needs [Homebrew](https://brew.sh) first). If it installed Docker Desktop, open it, accept the terms, and wait until it says it is running.
+- **Windows:** in PowerShell run `winget install OpenJS.NodeJS.LTS` and `winget install Docker.DockerDesktop`, reboot if asked, open Docker Desktop and wait until it is running. Then use **Git Bash** (installed with [Git for Windows](https://git-scm.com), it includes `unzip`) for every command below.
+
 **1. Install and create the local database** (the first run downloads a few GB of Docker images, so allow a few minutes):
 
 ```bash
