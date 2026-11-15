@@ -19,8 +19,13 @@ export default function SessionGate({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (DEMO) return;
-    supabase.auth.getSession().then(({ data }) => {
-      const id = data.session?.user.id ?? null;
+    supabase.auth.getSession().then(async ({ data }) => {
+      let id = data.session?.user.id ?? null;
+      // getSession only reads the saved token; getUser asks the server, so a deleted account (e.g. after a local reset) counts as signed out.
+      if (id && (await supabase.auth.getUser()).error) {
+        await supabase.auth.signOut({ scope: 'local' }); // fires SIGNED_OUT below, which goes to /welcome
+        id = null;
+      }
       if (id) setSessionUser(id);
       setUser(id);
     });

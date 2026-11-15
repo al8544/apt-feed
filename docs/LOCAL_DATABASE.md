@@ -80,7 +80,7 @@ stash, tours, proposals and agent runs. Listings are kept, so load the LA data o
 
 | Command | Start |
 |---|---|
-| `npm run dev:local` | **in-flock**: Vinnie is in "Our Flock" with 4 friends, a few swipes and 2 tours on LA listings. Demo person switcher, no sign-in. |
+| `npm run dev:local` | **in-flock**: Vinnie is in "Our Flock" with 4 friends, a few swipes and 2 tours on LA listings. Sign in as `vinnie@flock.test` / `flock1234` (also `maya@`, `jordan@`, `sam@`, `priya@flock.test`). |
 | `npm run dev:local -- new-user` | **new-user**: nobody exists. Sign up, then start a friends flock or join one of 3 seeded open flocks ranked by compatibility. Real sign-in. |
 
 `npm run db:seed [-- new-user]` resets without starting the app.

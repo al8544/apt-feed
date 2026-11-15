@@ -1,4 +1,5 @@
--- Scenario "in-flock": Vinnie already belongs to "Our Flock" with the crew, mid-hunt. Runs the demo person switcher (NEXT_PUBLIC_DEMO=1).
+-- Scenario "in-flock": Vinnie already belongs to "Our Flock" with the crew, mid-hunt. Sign in as vinnie@flock.test (password flock1234);
+-- maya@, jordan@, sam@ and priya@flock.test work too. Local only: these are real auth users with a known password.
 insert into public.profiles (id, username, display_name, avatar_color, bio, budget_max, beds_min, pets, neighborhoods, move_in, discoverable, is_demo) values
   ('00000000-0000-0000-0000-000000000001', 'vinnie.park', 'Vinnie Park', '#14B8A6', 'Hunting a 3 bd in Los Angeles with the crew. Move-in Jan 2027.', 4000, 2, true, '{"Silver Lake","Echo Park","Los Feliz"}', '2027-01-01', true, true);
 
@@ -30,3 +31,16 @@ do $$ begin
   end if;
 end $$;
 
+
+-- Real accounts for the five demo profiles (the profile rows exist already, so the sign-up trigger does nothing).
+-- Token columns are '' on purpose: GoTrue fails to read NULLs there.
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                        created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+select '00000000-0000-0000-0000-000000000000', id, 'authenticated', 'authenticated', split_part(display_name, ' ', 1) || '@flock.test',
+       crypt('flock1234', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''
+from public.profiles;
+update auth.users set email = lower(email);
+
+insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select id::text, id, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now()
+from auth.users;

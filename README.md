@@ -8,7 +8,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 | Command | What you get |
 |---|---|
-| `npm run dev:local` | Local database reset to **in-flock**: Vinnie is already in a flock with 4 friends (demo person switcher, no sign-in). |
+| `npm run dev:local` | Local database reset to **in-flock**: sign in as `vinnie@flock.test` / `flock1234`, already in a flock with 4 friends (`maya@`, `jordan@`, `sam@`, `priya@flock.test` work too). |
 | `npm run dev:local -- new-user` | Local database reset to **new-user**: no accounts. Sign up, then start a friends flock or join one of 3 seeded open flocks. |
 | `npm run db:seed` / `npm run db:seed -- new-user` | Same reset, without starting the app. |
 | `npm run dev` | The app against the **real** project (`.env.local`). No reset. |

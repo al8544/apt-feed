@@ -1,7 +1,7 @@
 # Graph Report - apt-feed  (2026-11-14)
 
 ## Corpus Check
-- 183 files · ~119,586 words
+- 183 files · ~119,806 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: .example 1, (none) 1, .ico 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `18d98afe`
+- Built from commit: `3780d5cf`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -90,21 +90,21 @@
 5. `area()` - 25 edges
 6. `Button()` - 24 edges
 7. `@supabase/supabase-js` - 24 edges
-8. `GroupPage()` - 23 edges
-9. `rerunShortlist()` - 23 edges
+8. `rerunShortlist()` - 23 edges
+9. `GroupPage()` - 23 edges
 10. `getGroupMembers()` - 23 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `10. Auth, consent, security` --references--> `requireUser()`  [INFERRED]
   docs/DESIGN.md → lib/server/auth.ts
+- `7.4 Roommate compatibility, open-flock joining, privacy` --references--> `compat()`  [INFERRED]
+  docs/DESIGN.md → lib/match/compat.ts
 - `6.2 Apartments.com images and details — enrichment **[built, deliberately unused]**` --references--> `parse()`  [INFERRED]
   docs/DESIGN.md → lib/enrich/apartments-com.ts
 - `8.9 Ducktect best option (search bar)` --references--> `matchesQuery()`  [INFERRED]
   docs/DESIGN.md → components/MapFiltersSheet.tsx
-- `7.4 Roommate compatibility, open-flock joining, privacy` --references--> `compat()`  [INFERRED]
+- `5.3 People, flocks, decisions` --references--> `compat()`  [INFERRED]
   docs/DESIGN.md → lib/match/compat.ts
-- `7.2 Listing fit (hard constraints, then score)` --references--> `groupMatch()`  [INFERRED]
-  docs/DESIGN.md → lib/api.ts
 
 ## Import Cycles
 - None detected.
@@ -365,16 +365,16 @@ Nodes (4): 2.1 What a user does, 2.2 Friends flock vs Open flock, 2.3 Voting and
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `@supabase/supabase-js` connect `test-places.mjs` to `ingest-places.ts`, `package.json`, `CoStar Data Ingest`, `ingest-costar-media.ts`, `enrich-apartments-com.ts`, `places.ts`, `run.ts`, `ducktect-testkit.ts`, `discover.ts`, `demo-agent.mjs`, `@supabase/supabase-js`, `test-flocks.mjs`, `test-proposals.mjs`, `test-agent-api.mjs`, `test-agent-db.mjs`, `enrich-vexcel.ts`, `aerial.ts`, `test-aerial.mjs`, `ducktect-run.ts`, `test-pins.mjs`, `test-ducktect-api.mjs`?**
-  _High betweenness centrality (0.254) - this node is a cross-community bridge._
+  _High betweenness centrality (0.253) - this node is a cross-community bridge._
 - **What connects `communities table`, `Brooklyn-to-LA cutover (ticket T4)`, `Next.js agent rules block` to the rest of the system?**
   _12 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `schemas.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.11576354679802955 - nodes in this community are weakly interconnected._
 - **Why does `react` connect `react` to `package.json`, `map/page.tsx`, `compare/page.tsx`, `find/page.tsx`, `format.ts`, `api.ts`, `ListingReel.tsx`, `format.ts`, `getGroupMembers`, `BookTourSheet.tsx`, `check`, `account/page.tsx`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.11954022988505747 - nodes in this community are weakly interconnected._
 - **Why does `next` connect `format.ts` to `react`, `proxy.ts`, `package.json`, `map/page.tsx`, `compare/page.tsx`, `find/page.tsx`, `format.ts`, `ListingReel.tsx`, `getGroupMembers`, `BookTourSheet.tsx`, `check`, `account/page.tsx`?**
-  _High betweenness centrality (0.045) - this node is a cross-community bridge._
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **Should `ingest-places.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.0907258064516129 - nodes in this community are weakly interconnected._
