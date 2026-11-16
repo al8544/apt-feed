@@ -31,7 +31,7 @@ export default function ListingPhoto({
   index?: number;
   className?: string;
   rough?: boolean;
-  contain?: boolean; // show the whole photo (letterboxed on black) instead of cropping to fill
+  contain?: boolean; // show the whole photo over a blurred copy of itself instead of cropping to fill
   children?: React.ReactNode;
 }) {
   // A photo that fails to load (hotlink blocked, link rotted) falls back to the gradient instead of a broken image.
@@ -43,6 +43,10 @@ export default function ListingPhoto({
       className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit] ${contain ? 'bg-black' : ''}`}
       style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter }}
     >
+      {src && contain && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" aria-hidden draggable={false} className="absolute inset-0 size-full scale-125 object-cover blur-2xl" />
+      )}
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
