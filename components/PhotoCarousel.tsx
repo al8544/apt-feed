@@ -20,7 +20,7 @@ export default function PhotoCarousel({ listing, plans = [] }: { listing: Pick<L
         onScroll={(e) => setIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
       >
         {Array.from({ length: photos }, (_, i) => (
-          <ListingPhoto key={i} listing={listing} index={i} className="h-full w-full shrink-0 snap-center" />
+          <ListingPhoto key={i} listing={listing} index={i} contain className="h-full w-full shrink-0 snap-center" />
         ))}
         {plans.length > 0 && (
           <div className="flex h-full w-full shrink-0 snap-center flex-col gap-1 overflow-y-auto bg-surface p-3">

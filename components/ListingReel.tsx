@@ -240,7 +240,7 @@ function SwipeCard({
       style={{ x, rotate }}
       className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
     >
-      <ListingPhoto listing={listing} index={photo} className="size-full">
+      <ListingPhoto listing={listing} index={photo} contain className="size-full">
         <div className="absolute inset-x-0 top-0 h-[170px] bg-gradient-to-b from-[rgba(42,23,8,0.45)] to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-b from-transparent to-[rgba(42,23,8,0.8)]" />
 

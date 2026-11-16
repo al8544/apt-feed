@@ -24,12 +24,14 @@ export default function ListingPhoto({
   index = 0,
   className = '',
   rough = false,
+  contain = false,
   children,
 }: {
   listing: Pick<Listing, 'id' | 'photos' | 'address'>;
   index?: number;
   className?: string;
   rough?: boolean;
+  contain?: boolean; // show the whole photo (letterboxed on black) instead of cropping to fill
   children?: React.ReactNode;
 }) {
   // A photo that fails to load (hotlink blocked, link rotted) falls back to the gradient instead of a broken image.
@@ -38,7 +40,7 @@ export default function ListingPhoto({
   const src = found && !failed.has(found) ? found : undefined;
   const layer = (inset: string, filter?: string) => (
     <div
-      className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit]`}
+      className={`absolute ${inset} -z-10 overflow-hidden rounded-[inherit] ${contain ? 'bg-black' : ''}`}
       style={{ backgroundImage: src ? undefined : gradientFor(listing.id), filter }}
     >
       {src && (
@@ -49,7 +51,7 @@ export default function ListingPhoto({
           loading={index ? 'lazy' : undefined}
           draggable={false}
           onError={() => setFailed((f) => new Set(f).add(src))}
-          className="absolute inset-0 size-full object-cover"
+          className={`absolute inset-0 size-full ${contain ? 'object-contain' : 'object-cover'}`}
         />
       )}
     </div>
